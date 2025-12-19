@@ -24,6 +24,13 @@ class ControlPID_vitesse:
     def getStaticError(self):
         return self.vitesse_desiree - self.moteur.getSpeed()
     
+    def getTheoricalStaticError(self):
+        K = self.moteur.Kc / (self.moteur.R * self.moteur.Nu + self.moteur.Kc * self.moteur.Ke)
+        if self.K_I == 0:
+            return self.vitesse_desiree
+        else:
+            return self.vitesse_desiree / (1 + K * self.K_P)
+    
     def getTimeResponse(self, pourcent=5):
 
         ts = self.moteur.time_history
@@ -76,7 +83,7 @@ class ControlPID_vitesse:
         t = np.array(self.moteur.time_history)
         tensions = np.array(self.moteur.voltage_history)
 
-        plt.plot(t, tensions, color=color, label='Tension appliquée')
+        plt.plot(t, tensions, color=color, label=f'Tension appliquée à {self.moteur.name}')
         plt.legend()
 
 
@@ -93,16 +100,15 @@ if __name__ == "__main__":
     control_P = ControlPID_vitesse(m_bf_P, K_P=20, K_I=0.0, K_D=0.0)
 
     t = 0
-    step = 0.01
-    temps = [t]
-    duration = 5.0
+    step = 0.001
+    duration = 3.0
 
-    target = 0.1
-    echelon = 1.0
+    target = 2 # rad/s
+    K = m_bo.Kc / (m_bo.R * m_bo.Nu + m_bo.Kc * m_bo.Ke)
 
     while t < duration:
 
-        m_bo.setVoltage(echelon)
+        m_bo.setVoltage(target/K)
         control_PID.setTarget(target)
         control_PI.setTarget(target)
         control_P.setTarget(target)
@@ -129,3 +135,7 @@ if __name__ == "__main__":
 
     # pas de dépassement pour le PI car on a de une viscosité relativement élevée par rapport à l'inertie.
     # Par contre en augmentant K_I je peux en faire apparaître.
+    # erreur stat theo = erreur stat simu
+
+    print("Erreur statique théorique PID :", control_PID.getTheoricalStaticError())
+    print("Erreur statique simulée PID :", control_PID.getStaticError())
