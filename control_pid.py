@@ -1,7 +1,7 @@
 from moteur_cc import MoteurCC
 
 class ControlPID_vitesse:
-    def __init__(self,moteur, K_P, K_I, K_D):
+    def __init__(self,moteur, K_P, K_I, K_D, control_type=None):
 
         self.K_P = K_P
         self.K_I = K_I
@@ -12,6 +12,9 @@ class ControlPID_vitesse:
         self.vitesse_desiree = 0
         self.erreur_precedente = 0
         self.integrale = 0
+
+        self.control_type = control_type
+
 
     def __str__(self):
         return f"ControlPID(K_P={self.K_P}, K_I={self.K_I}, K_D={self.K_D}, moteur={self.moteur})"
@@ -25,11 +28,16 @@ class ControlPID_vitesse:
         return self.vitesse_desiree - self.moteur.getSpeed()
     
     def getTheoricalStaticError(self):
-        K = self.moteur.Kc / (self.moteur.R * self.moteur.Nu + self.moteur.Kc * self.moteur.Ke)
-        if self.K_I == 0:
-            return self.vitesse_desiree
-        else:
-            return self.vitesse_desiree / (1 + K * self.K_P)
+        # si on a un terme intégral, l'erreur statique est nulle théoriquement
+        if self.K_I > 0:
+            return 0.0
+
+        # pour un P ou un PD on a erreur = consigne / (1 + GAIN_MOTEUR * K_P)        
+        K_moteur = self.moteur.Kc / ((self.moteur.R * self.moteur.Nu) + (self.moteur.Kc * self.moteur.Ke))
+        
+        K_BO = K_moteur * self.K_P
+        
+        return self.vitesse_desiree / (1 + K_BO)
     
     def getTimeResponse(self, pourcent=5):
 
@@ -138,4 +146,4 @@ if __name__ == "__main__":
     # erreur stat theo = erreur stat simu
 
     print("Erreur statique théorique PID :", control_PID.getTheoricalStaticError())
-    print("Erreur statique simulée PID :", control_PI.getStaticError())
+    print("Erreur statique simulée PID :", control_PID.getStaticError())
