@@ -26,17 +26,16 @@ class ControlPID_vitesse:
     
     def getTimeResponse(self, pourcent=5):
 
-        t = self.moteur.time_history
+        ts = self.moteur.time_history
         vs = self.moteur.speed_history
 
-        cible = self.vitesse_desiree
-        seuil_haut = cible * (1 + pourcent / 100)
-        seuil_bas = cible * (1 - pourcent / 100)
+        seuil = self.vitesse_desiree * (1 - pourcent / 100)
 
-        for i, v in enumerate(vs):
-            if v < seuil_bas or v > seuil_haut:
-                return t[i+1] if i+1 < len(t) else t[-1]
-        
+        for t, v in zip(ts, vs):
+            if v > seuil:
+                return t
+        return f"Temps de réponse à {pourcent}% non atteint."
+
 
     def simule(self, step):
 
