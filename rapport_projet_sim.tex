@@ -1,0 +1,147 @@
+
+%------------------------------------------------------------------------------%
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[french]{babel}
+\usepackage{comment}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usetikzlibrary{shapes.geometric} % Charger les formes géométriques
+\usepackage{setspace}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{afterpage}
+\usepackage{algorithm2e}
+\usetikzlibrary{shapes.geometric, arrows}
+\captionsetup{
+	justification=centering, %cente la légende
+}
+\geometry{left=2cm, right=2cm, top=2cm, bottom=2cm}
+\renewcommand{\contentsname}{Sommaire}
+\renewcommand{\refname}{Bibliographie}
+
+
+\begin{document}
+	
+	% Title Page
+	\begin{titlepage}
+		\begin{flushleft}{\Large \includegraphics[width=0.2\textwidth]{Logo_SU.svg.png}}\hfill \raisebox{0.4cm}{\textbf{UM4RBR14}}
+		\end{flushleft}
+		
+		
+		\vspace{1cm} % Adjust space to move the title to the center of the page
+		
+		\vfill
+		\begin{center}
+			
+		\end{center}
+		
+		\vfill
+		\begin{center}
+			\rule{\textwidth}{0.5mm} \\[1.2cm]
+			{\LARGE \textbf{Compte rendu de Simulation}}\\[1cm]
+			\rule{\textwidth}{0.5mm} \\[2.5cm]
+		\end{center}
+		\vfill
+		
+		
+		
+		\vfill
+		\begin{center}
+			
+		\end{center}
+		
+		
+		\begin{flushleft}
+			\textbf{Paul CAMUS} \\
+			\textbf{21107953 M1 ROB}\hfill \textbf{\today}
+		\end{flushleft}
+		
+		
+	\end{titlepage}
+	\onehalfspacing
+	\hypersetup{linkcolor=black}
+	\setcounter{tocdepth}{3}
+	\newgeometry{margin=1.5in}
+	
+	\section*{Introduction}
+	
+	
+		\section*{Solution analytique de $\Omega(t)$ en fonction de $U_m(t)$}
+		
+		\subsection*{1. Équations du système}
+		D'après le sujet du projet, le moteur à courant continu est régi par les équations suivantes :
+		
+		\begin{itemize}
+			\item \textbf{Équation électrique} (loi des mailles) :
+			\begin{equation}
+				U_m(t) = E(t) + R \cdot i(t) + L \frac{di(t)}{dt}
+			\end{equation}
+			
+			\item \textbf{Équation mécanique} (principe fondamental de la dynamique) :
+			\begin{equation}
+				J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = \Gamma(t)
+			\end{equation}
+			
+			\item \textbf{Equations de couplage} :
+			\begin{equation}
+				\Gamma(t) = k_c \cdot i(t) \quad \text{et} \quad E(t) = k_e \cdot \Omega(t)
+			\end{equation}
+		\end{itemize}
+		
+		\subsection*{2. Hypothèse simplificatrice}
+		On suppose l'inductance de l'induit négligeable : $L \approx 0$.
+		L'équation électrique devient alors purement algébrique :
+		\begin{equation}
+			U_m(t) = E(t) + R \cdot i(t) \implies i(t) = \frac{U_m(t) - E(t)}{R}
+		\end{equation}
+		
+		\subsection*{3. Démonstration}
+		En substituant l'expression du courant $i(t)$ dans l'équation mécanique, nous obtenons :
+		
+		\begin{equation}
+			J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = k_c \left( \frac{U_m(t) - k_e \cdot \Omega(t)}{R} \right)
+		\end{equation}
+		
+		Développons pour regrouper les termes en $\Omega(t)$ :
+		\begin{equation}
+			J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = \frac{k_c}{R} U_m(t) - \frac{k_c k_e}{R} \Omega(t)
+		\end{equation}
+		
+		\begin{equation}
+			J \frac{d\Omega(t)}{dt} + \left( f + \frac{k_c k_e}{R} \right) \Omega(t) = \frac{k_c}{R} U_m(t)
+		\end{equation}
+		
+		En divisant par le coefficient devant $\Omega(t)$, soit $\left( f + \frac{k_c k_e}{R} \right)$, on obtient la forme canonique du premier ordre :
+		\begin{equation}
+			\tau \frac{d\Omega(t)}{dt} + \Omega(t) = K \cdot U_m(t)
+		\end{equation}
+		
+		Avec les constantes identifiées :
+		\begin{itemize}
+			\item \textbf{Gain statique} : $K = \frac{k_c}{R f + k_c k_e}$
+			\item \textbf{Constante de temps} : $\tau = \frac{R J}{R f + k_c k_e}$
+		\end{itemize}
+		
+		\subsection*{4. Solution temporelle (Réponse indicielle)}
+		Pour une entrée en échelon de tension $U_m(t) = U_0$ pour $t \ge 0$ (avec conditions initiales nulles $\Omega(0)=0$), la solution de l'équation différentielle est :
+		
+		\begin{equation}
+			\Omega(t) = K \cdot U_0 \left( 1 - e^{-t/\tau} \right)
+		\end{equation}
+		
+		Soit en remplaçant $K$ et $\tau$ par leurs expressions :
+		\begin{equation}
+			\boxed{ \Omega(t) = \frac{k_c U_0}{R f + k_c k_e} \left( 1 - \exp\left( \frac{-(R f + k_c k_e)t}{R J} \right) \right) }
+		\end{equation}
+		
+\end{document}
