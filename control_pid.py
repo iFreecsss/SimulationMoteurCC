@@ -96,7 +96,7 @@ if __name__ == "__main__":
     m_bf_P = MoteurCC(name="Moteur BF P")
 
     control_PID = ControlPID_vitesse(m_bf_PID, K_P=20, K_I=50, K_D=0.1)
-    control_PI = ControlPID_vitesse(m_bf_PI, K_P=20, K_I=50, K_D=0.0)
+    control_PI = ControlPID_vitesse(m_bf_PI, K_P=20, K_I=100, K_D=0.0)
     control_P = ControlPID_vitesse(m_bf_P, K_P=20, K_I=0.0, K_D=0.0)
 
     t = 0
@@ -138,4 +138,4 @@ if __name__ == "__main__":
     # erreur stat theo = erreur stat simu
 
     print("Erreur statique théorique PID :", control_PID.getTheoricalStaticError())
-    print("Erreur statique simulée PID :", control_PID.getStaticError())
+    print("Erreur statique simulée PID :", control_PI.getStaticError())
