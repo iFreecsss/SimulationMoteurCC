@@ -42,44 +42,8 @@ class MoteurCC:
     
 
     def simule(self, step):
-        """
-        Simule un pas de temps (méthode d'Euler)[cite: 55].
-        Intègre les équations différentielles électrique et mécanique.
-        """
-        # 1. Calcul de la force contre-électromotrice E(t) = ke * Omega(t) [cite: 22]
-        E = self.Ke * self.omega
-        
-        # 2. Équation Électrique : Um = E + Ri + L(di/dt) [cite: 25]
-        # Si L est très proche de 0, on utilise la relation algébrique (L=0) 
-        if self.L < 1e-6: 
-            self.i = (self.Um - E) / self.R
-        else:
-            di_dt = (self.Um - E - self.R * self.i) / self.L
-            self.i += di_dt * step # Intégration d'Euler
+        pass
 
-        # 3. Calcul du Couple Moteur : Gamma = kc * i [cite: 16]
-        self.couple = self.Kc * self.i
-        
-        # 4. Équation Mécanique : J(dOmega/dt) + f*Omega = Gamma [cite: 27]
-        # Couple résistant (ici seulement frottement f*Omega, pas de charge externe par défaut)
-        domega_dt = (self.couple - self.Nu * self.omega) / self.I
-
-        # 5. Mise à jour des variables d'état (Intégration)
-        self.omega += domega_dt * step
-        self.theta += self.omega * step
-        
-        # 6. Mise à jour de l'historique pour plot()
-        self.current_time += step
-        self.time_history.append(self.current_time)
-        self.speed_history.append(self.omega)
-
-    def plot(self):
-        plt.plot(self.time_history, self.speed_history, label='Vitesse $\Omega(t)$')
-        plt.xlabel('Temps (s)')
-        plt.ylabel('Vitesse (rad/s)')
-        plt.title('Réponse du Moteur CC')
-        plt.grid()
-        plt.legend()
 
 if __name__ == "__main__":
     m = MoteurCC()
