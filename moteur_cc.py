@@ -1,6 +1,3 @@
-import matplotlib.pyplot as plt
-import numpy as np
-
 class MoteurCC:
     def __init__(self, resistance=1, inductance=0, fcem=0.01, couple=0.01, inertie=0.01, visc=0.1, name="MoteurCC", color=None):
 
@@ -25,6 +22,7 @@ class MoteurCC:
         # Liste pour l'historique
         self.time_history = []
         self.speed_history = []
+        self.voltage_history = []
         self.temps = 0
 
         # ajout des perturbations externes
@@ -32,23 +30,41 @@ class MoteurCC:
         self.f_charge = 0.0
         self.C_ext = 0.0 
 
+        # capage de la tension maximale
+        self.Um_max = 24.0 # tension maximale de beaucoup de moteurs
 
-    def __str__(self):return (f"MoteurCC(R={self.R}, L={self.L}, Ke={self.Ke}, Kc={self.Kc}, I={self.I}, Nu={self.Nu})")
-    def __repr__(self):return str(self)
+
+    def __str__(self):
+        return (f"MoteurCC(R={self.R}, L={self.L}, Ke={self.Ke}, Kc={self.Kc}, I={self.I}, Nu={self.Nu})")
+    def __repr__(self):
+        return str(self)
     
     def setCharge(self, inertie_charge, frottement_charge=0):
-        self.J_charge = inertie_charge
-        self.f_charge = frottement_charge
+        self.J_charge, self.f_charge = inertie_charge,frottement_charge
 
-    def setCoupleExterne(self, couple_resistant):self.C_ext = couple_resistant
-    def setVoltage(self, V):self.Um = V
+    def setCoupleExterne(self, couple_resistant):
+        self.C_ext = couple_resistant
+
+    def setVoltage(self, V):
+        if V > self.Um_max:
+            self.Um = self.Um_max
+        elif V < -self.Um_max:
+            self.Um = -self.Um_max
+        else:
+            self.Um = V
     
-    def getPosition(self): return self.theta
-    def getSpeed(self): return self.omega
-    def getTorque(self): return self.couple
-    def getIntensity(self): return self.i
-    
-    
+    def getVoltage(self): 
+        return self.Um
+    def getPosition(self): 
+        return self.theta
+    def getSpeed(self): 
+        return self.omega
+    def getTorque(self): 
+        return self.couple
+    def getIntensity(self): 
+        return self.i
+
+
 
     def simule(self, step):
         """
@@ -89,10 +105,15 @@ class MoteurCC:
         
         # sauvegarde pour l'affichage
         self.temps += step
+
+        self.voltage_history.append(self.Um)
         self.time_history.append(self.temps)
         self.speed_history.append(self.omega)
 
     def plot(self, modele_theorique=False):
+        import matplotlib.pyplot as plt
+        import numpy as np
+
         if self.color is None:
             # renvoie un tableau avec 3 valeurs aléatoires entre 0 et 1 pour définir aleatoirement une couleur
             self.color = np.random.rand(3,)
@@ -100,7 +121,7 @@ class MoteurCC:
         t = np.array(self.time_history)
         vitesses = np.array(self.speed_history)
 
-        plt.plot(t, vitesses, color=self.color, label=self.name, linewidth=2)
+        plt.plot(t, vitesses, color=self.color, label=f"Vitesse de {self.name}")
 
         # pour éviter de tracer la courbe théorique dès qu'on plot
         if modele_theorique:
@@ -114,9 +135,10 @@ class MoteurCC:
                 
                 vitesse_theo = K * self.Um * (1 - np.exp(-t / tau))
 
-                plt.plot(t, vitesse_theo, 'r--', label='Modèle analytique', linewidth=2)
+                plt.plot(t, vitesse_theo, 'r--', label='Modèle analytique')
         
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
 
     plt.figure(figsize=(30, 20))
 
@@ -161,18 +183,3 @@ if __name__ == "__main__":
     plt.grid()
     plt.legend()
     plt.show()
-
-
-
-
-"""Classe ControlPID_vitesse :
-attributs :
-• paramètres K_P,K_I,K_D, moteurCC à contrôler
-• Entrée : Vitesse désirée
-• Sortie : tension envoyée au moteur ; vitesse du moteur
-Méthodes
-• _init_, _str_, _repr_
-• setTarget(vitesse)
-• getVoltage()
-• simule(step) [ avec m.setVoltage(V) et m.simule(step)]
-• plot()"""
