@@ -1,9 +1,13 @@
-class MoteurCC:
-    def __init__(self, resistance=1, inductance=0, fcem=0.01, couple=0.01, inertie=0.01, visc=0.1, name="MoteurCC", color=None):
+from vecteur3d import Vector3D as v
 
+
+class MoteurCC:
+    def __init__(self, resistance=1, inductance=0, fcem=0.01, couple=0.01, inertie=0.01, visc=0.1, name="MoteurCC", color=None, position=v(0,0,0)):
+        
         # param généraux
         self.name = name
         self.color = color
+        self.position = position
 
         # paramètres électriques et mécaniques du moteur
         self.R = resistance
@@ -136,7 +140,29 @@ class MoteurCC:
                 vitesse_theo = K * self.Um * (1 - np.exp(-t / tau))
 
                 plt.plot(t, vitesse_theo, 'r--', label='Modèle analytique')
+
+def gameDraw(self, screen, scale):
+        import pygame
+        from math import cos, sin
         
+        # conversion des coordonnées du moteur en pixels
+        X = int(self.position.x * scale)
+        Y = int(self.position.y * scale)
+        
+        radius = 40 
+        
+        pygame.draw.circle(screen, (200, 200, 200), (X, Y), radius)
+        pygame.draw.circle(screen, (0, 0, 0), (X, Y), radius, 2)
+        
+        end_x = X + radius * cos(self.theta)
+        end_y = Y + radius * sin(self.theta)
+        
+        pygame.draw.line(screen, (255, 0, 0), (X, Y), (end_x, end_y), 4)
+        
+        font = pygame.font.SysFont('Arial', 12)
+        text = font.render(f"{self.name}", True, (0, 0, 0))
+        screen.blit(text, (X - radius, Y + radius + 5))  
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
