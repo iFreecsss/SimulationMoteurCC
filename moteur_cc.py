@@ -141,7 +141,7 @@ class MoteurCC:
 
                 plt.plot(t, vitesse_theo, 'r--', label='Modèle analytique')
 
-def gameDraw(self, screen, scale):
+    def gameDraw(self, screen, scale):
         import pygame
         from math import cos, sin
         
@@ -159,9 +159,6 @@ def gameDraw(self, screen, scale):
         
         pygame.draw.line(screen, (255, 0, 0), (X, Y), (end_x, end_y), 4)
         
-        font = pygame.font.SysFont('Arial', 12)
-        text = font.render(f"{self.name}", True, (0, 0, 0))
-        screen.blit(text, (X - radius, Y + radius + 5))  
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

@@ -3,12 +3,14 @@ from moteur_cc import MoteurCC
 from vecteur3d import Vector3D as v
 from types import MethodType
 import pygame
+from pygame.locals import *
 
 class Univers:
     def __init__(self, name='ici', t0=0, step=0.001, dimensions=(100,100), game=False, gameDimensions=(1024,780), fps=60):
         self.name = name
         self.time = [t0]
         self.population = []
+        self.moteurs = []
         self.generators = []
         self.step = step
         
@@ -26,13 +28,27 @@ class Univers:
     def __repr__(self):
         return str(self)
         
-    def addMotor(self, *members):
-        for i in members:
-            self.population.append(i)
-            
+    def addMotors(self, *motors):
+        for m in motors:
+            self.moteurs.append(m)
+
+    def addParticules(self, *particles):
+        for p in particles:
+            self.population.append(p)
+
+    def addGenerators(self, *generators):
+        for g in generators:
+            self.generators.append(g)
+
     def simulateAll(self):
         for p in self.population:
+            for source in self.generators:
+                source.setForce(p)
             p.simule(self.step)
+            
+        for m in self.moteurs:
+            m.simule(self.step)
+            
         self.time.append(self.time[-1] + self.step)
 
     def simulateFor(self, duration):
@@ -47,7 +63,7 @@ class Univers:
     def simulateRealTime(self):
         pygame.init()
         W, H = self.gameDimensions
-        screen = pygame.display.set_mode((W, H))        
+        screen = pygame.display.set_mode((W, H))   
         clock = pygame.time.Clock()
         
         font_obj = pygame.font.SysFont('Arial', 22)
@@ -55,6 +71,7 @@ class Univers:
         running = True
 
         while running:
+            
             # Fond d'écran (Gris clair)
             screen.fill((240, 240, 240))
             
@@ -70,29 +87,31 @@ class Univers:
                 if event.type == pygame.QUIT:
                     running = False
 
-            # Gestion des interactions utilisateur (clavier/souris)
             self.gameInteraction(events, keys) 
             
-            # Simulation physique (1 pas graphique = 1/FPS secondes de physique)
             self.simulateFor(1 / self.gameFPS)    
             
-            # Dessin de tous les objets
-            for t in self.population:
-                t.gameDraw(screen, self.scale)
+            for m in self.moteurs:
+                if hasattr(m, 'gameDraw'):
+                    m.gameDraw(screen, self.scale)
 
+            for g in self.generators:
+                if hasattr(g, 'drawArea'):
+                    g.drawArea(screen, self.scale)
+            
+            for p in self.population:
+                p.gameDraw(screen, self.scale)
+                
+            
+            # get y axis upwards, origin on bottom left : La fenetre pygame a l'axe y vers le bas. On le retourne.
             flip_surface = pygame.transform.flip(screen, False, flip_y=True)
             screen.blit(flip_surface, (0, 0))
-            
-            # Affichage du temps (Il faut le redessiner après le flip pour qu'il soit à l'endroit)
-            # Note: Si on flip tout l'écran, le texte sera à l'envers. 
-            # Astuce : On blit le texte APRES le flip ou on ne flip pas le texte.
-            # Ici, je simplifie : on affiche le texte en haut à gauche "proprement".
-            
             # On ré-affiche le texte sur l'écran final (non flippé) pour qu'il soit lisible
             text_surface_obj = font_obj.render(('Time: %.2f s' % self.time[-1]), True, (0,0,0))
             screen.blit(text_surface_obj, (10, 10))
             
-            pygame.display.flip()
+            
+            pygame.display.flip()  # envoie de la fenetre vers l'écran
             clock.tick(self.gameFPS)
         
         pygame.quit()
@@ -104,11 +123,11 @@ if __name__ == "__main__":
     
     m1 = MoteurCC(name='Moteur A', position=v(5, 5, 0))
     
-    u.addMotor(m1)
+    u.addMotors(m1)
     
     def interaction_clavier(self, events, keys):
-        moteur = self.population[0]
-        
+        moteur = self.moteurs[0]
+
         if keys[pygame.K_UP]:
             moteur.setVoltage(12.0)
         elif keys[pygame.K_DOWN]:
