@@ -2,17 +2,18 @@ import pygame
 import numpy as np
 from math import cos, sin, sqrt
 from vecteur3d import Vector3D as v
+from control_pid import ControlPID_vitesse
 from multiverse import Univers
 from moteur_cc import MoteurCC
 from particule import Particule, Glissiere, SpringDamper, Gravity
 
 class BrasCentrifuge:
     def __init__(self, moteur, glissiere, particule):
-        self.moteur = moteur
+        self.moteur = moteur.moteur
         self.glissiere = glissiere
         self.particule = particule
         self.active = True
-        
+
         self.glissiere.origine = self.moteur.position
 
     def setForce(self, p):
@@ -49,43 +50,49 @@ class BrasCentrifuge:
 
 if __name__ == "__main__":
     from types import MethodType
+    import matplotlib.pyplot as plt
 
     uni = Univers(name="Centrifugeuse", game=True)
 
-    moteur = MoteurCC(position=v(50, 50, 0), name="Moteur Central")
+    moteur_caca = MoteurCC(position=v(50, 50, 0), name="Moteur Central")
+    m = ControlPID_vitesse(moteur_caca, 50, 10, 0.1)
 
     # particule qui bouge sur le rail
     masse_mobile = Particule(position=v(55, 50, 0), name="Particule")
     
     # ajout de la glissière (position horizontale initialement mais va changer)
-    rail_tournant = Glissiere(origine=moteur.position, direction=v(1, 0, 0), k=15000, c=200)
+    rail_tournant = Glissiere(origine=m.moteur.position, direction=v(1, 0, 0), k=15000, c=200)
 
     # ajout d'un ressort en mettant une seconde particule fixe au centre du moteur
-    ressort_rappel = SpringDamper(L0=5, k=10, c=0.5, P0=masse_mobile, P2=Particule(position=moteur.position, name="Fixe"), active=True)
+    ressort_rappel = SpringDamper(L0=5, k=10, c=0.5, P0=masse_mobile, P2=Particule(position=m.moteur.position, name="Fixe"), active=True)
     ressort_rappel.P2.fixed = True 
 
-    bras = BrasCentrifuge(moteur, rail_tournant, masse_mobile)
+    bras = BrasCentrifuge(m, rail_tournant, masse_mobile)
 
-    uni.addMotors(moteur)
+    uni.addMotors(m)
     uni.addParticules(masse_mobile)
     uni.addGenerators(bras, ressort_rappel)
 
     def interaction(self, events, keys):
-        m = self.moteurs[0]
+        mo = self.moteurs[0].moteur
         
         # Contrôle de la tension du moteur
         if keys[pygame.K_UP]:
-            m.setVoltage(12.0)
+            mo.setVoltage(12.0)
         elif keys[pygame.K_DOWN]:
-            m.setVoltage(-12.0)
+            mo.setVoltage(-12.0)
         elif keys[pygame.K_SPACE]:
-            m.setVoltage(0.0)
+            mo.setVoltage(0.0)
         elif keys[pygame.K_b]:
-            m.setVoltage(0.0) 
-            m.omega = 0 
+            mo.setVoltage(0.0) 
+            mo.omega = 0 
             
 
     uni.gameInteraction = MethodType(interaction, uni)
-
-    
+    m.moteur.Um_max = 100.0
+    m.setTarget(10) # rad/s
     uni.simulateRealTime()
+    m.plot([moteur_caca])
+    plt.show()
+    print("Temps de réponse centrifugeuse :", m.getTimeResponse())
+    

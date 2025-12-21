@@ -1,7 +1,7 @@
 from moteur_cc import MoteurCC
 
 class ControlPID_vitesse:
-    def __init__(self,moteur, K_P, K_I, K_D, control_type=None):
+    def __init__(self,moteur, K_P, K_I, K_D):
 
         self.K_P = K_P
         self.K_I = K_I
@@ -12,8 +12,6 @@ class ControlPID_vitesse:
         self.vitesse_desiree = 0
         self.erreur_precedente = 0
         self.integrale = 0
-
-        self.control_type = control_type
 
 
     def __str__(self):
