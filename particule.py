@@ -6,7 +6,7 @@ from vecteur3d import Vector3D as v
 from multiverse import Univers
 
 class Particule:
-    def __init__(self, position=v(), init_speed=v(), masse=1.0, name='name', color=None):
+    def __init__(self, position=v(), init_speed=v(), masse=1.0, name='name', color=None, fixed=False):
         self.name = name
         self.masse = masse
         
@@ -21,7 +21,7 @@ class Particule:
         
         self.forces_ext = []
 
-        self.fixed = False
+        self.fixed = fixed
 
     def applyForce(self, *args):
         for f in args:
@@ -173,7 +173,7 @@ class SpringDamper:
             p2 = self.P2.getPosition()
             start = (int(p1.x * scale), int(p1.y * scale))
             end = (int(p2.x * scale), int(p2.y * scale))
-            pygame.draw.line(screen, (100, 100, 100), start, end, 2)
+            pygame.draw.line(screen, (255, 0, 0), start, end, 2)
 
 class Fil(SpringDamper):
     def __init__(self, P0, P2, name='fil', active=True):
@@ -182,9 +182,10 @@ class Fil(SpringDamper):
 
 
 class Glissiere:
-    def __init__(self, origine, direction, k=10000, c=100, longueur_visuelle=1000, name='glissiere', active=True):
+    def __init__(self, origine, direction, targets=[], k=1e6, c=1e2, longueur_visuelle=1000, name='glissiere', active=True):
 
         self.origine = origine
+        self.targets = targets
         
         # Normalisation du vecteur directeur
         l = direction.mod()
@@ -202,7 +203,8 @@ class Glissiere:
     def setForce(self, particule):
         if not self.active:
             return
-
+        if particule not in self.targets:
+            return
         # calcul de la position de la particule relative à la glissière
         pos_relative = particule.getPosition() - self.origine
 
@@ -232,8 +234,8 @@ class Glissiere:
         
         particule.applyForce(f_rappel + f_amortissement)
 
-    def drawArea(self, screen, scale):
-        if self.active:
+    def drawArea(self, screen, scale, draw=False):
+        if self.active and draw:
             start = self.origine + self.direction * (self.longueur_visuelle)
             
             p0 = (int(self.origine.x * scale), int(self.origine.y * scale))

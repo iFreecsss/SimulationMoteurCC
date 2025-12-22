@@ -2,8 +2,9 @@ from vecteur3d import Vector3D as v
 
 
 class MoteurCC:
+    """Modélisation d'un moteur à courant continu (CC) avec ses caractéristiques électriques et mécaniques."""
     def __init__(self, resistance=1, inductance=0, fcem=0.01, couple=0.01, inertie=0.01, visc=0.1, name="MoteurCC", color=None, position=v(0,0,0)):
-        
+
         # param généraux
         self.name = name
         self.color = color
@@ -44,12 +45,35 @@ class MoteurCC:
         return str(self)
     
     def setCharge(self, inertie_charge, frottement_charge=0):
+        """
+        Définit la charge inertielle et les frottements supplémentaires appliqués au moteur.
+        
+        Parameters
+        ----------
+            inertie_charge (float): Inertie de charge supplémentaire (kg.m²).
+            frottement_charge (float): Coefficient de frottement supplémentaire (N.m.s/rad).
+        
+        """
         self.J_charge, self.f_charge = inertie_charge,frottement_charge
 
     def setCoupleExterne(self, couple_resistant):
+        """
+        Définit un couple résistant externe appliqué au moteur.
+
+        Parameters
+        ----------
+            couple_resistant (float): Couple résistant externe (N.m).
+        """
         self.C_ext = couple_resistant
 
     def setVoltage(self, V):
+        """
+        Définit la tension d'alimentation du moteur en la limitant à la tension maximale.
+
+        Parameters
+        ----------
+            V (float): Tension d'alimentation souhaitée (Volts).
+        """
         if V > self.Um_max:
             self.Um = self.Um_max
         elif V < -self.Um_max:
@@ -57,15 +81,50 @@ class MoteurCC:
         else:
             self.Um = V
     
-    def getVoltage(self): 
+    def getVoltage(self):
+        """
+        Retourne la tension d'alimentation actuelle du moteur.
+
+        Returns
+        -------
+            float: Tension d'alimentation actuelle (Volts).
+        """
         return self.Um
     def getPosition(self): 
+        """
+        Retourne la position angulaire actuelle du moteur.
+
+        Returns
+        -------
+            float: Position angulaire actuelle (radians).
+        """
         return self.theta
     def getSpeed(self): 
+        """
+        Retourne la vitesse angulaire actuelle du moteur.
+
+        Returns
+        -------
+            float: Vitesse angulaire actuelle (radians/s).
+        """
         return self.omega
     def getTorque(self): 
+        """
+        Retourne le couple actuel du moteur.
+
+        Returns
+        -------
+            float: Couple actuel (N.m).
+        """
         return self.couple
     def getIntensity(self): 
+        """
+        Retourne l'intensité actuelle du moteur.
+
+        Returns
+        -------
+            float: Intensité actuelle (A).
+        """
         return self.i
 
 
@@ -115,6 +174,13 @@ class MoteurCC:
         self.speed_history.append(self.omega)
 
     def plot(self, modele_theorique=False):
+        """
+        Trace la courbe de la vitesse angulaire du moteur en fonction du temps.
+        
+        Parameters
+        ----------
+            modele_theorique (bool): Si True, trace également la courbe théorique.
+        """
         import matplotlib.pyplot as plt
         import numpy as np
 
@@ -142,6 +208,14 @@ class MoteurCC:
                 plt.plot(t, vitesse_theo, 'r--', label='Modèle analytique')
 
     def gameDraw(self, screen, scale):
+        """
+        Dessine une représentation simple du moteur sur l'écran de jeu.
+        
+        Parameters
+        ----------
+            screen (pygame.Surface): Surface de dessin de Pygame.
+            scale (float): Facteur d'échelle pour la conversion des unités de simulation en pixels
+        """
         import pygame
         from math import cos, sin
         
@@ -157,7 +231,7 @@ class MoteurCC:
         end_x = X + radius * cos(self.theta)
         end_y = Y + radius * sin(self.theta)
         
-        pygame.draw.line(screen, (255, 0, 0), (X, Y), (end_x, end_y), 4)
+        pygame.draw.line(screen, (0, 0, 0), (X, Y), (end_x, end_y), 4)
         
 
 if __name__ == "__main__":

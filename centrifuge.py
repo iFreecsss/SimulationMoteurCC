@@ -17,7 +17,8 @@ class BrasCentrifuge:
         self.glissiere.origine = self.moteur.position
 
     def setForce(self, p):
-        if not self.active: return
+        if not self.active:return
+        if p != self.particule:return
         
         theta = self.moteur.theta
 
@@ -41,6 +42,7 @@ class BrasCentrifuge:
 
     def drawArea(self, screen, scale):
         self.glissiere.drawArea(screen, scale)
+        self.moteur.gameDraw(screen, scale)
         
         # centre de rotation du moteur
         cx = int(self.moteur.position.x * scale)
@@ -58,14 +60,13 @@ if __name__ == "__main__":
     m = ControlPID_vitesse(moteur_caca, 50, 10, 0.1)
 
     # particule qui bouge sur le rail
-    masse_mobile = Particule(position=v(55, 50, 0), name="Particule")
-    
+    masse_mobile = Particule(masse=0.1, position=v(55, 50, 0), name="Particule")
+
     # ajout de la glissière (position horizontale initialement mais va changer)
-    rail_tournant = Glissiere(origine=m.moteur.position, direction=v(1, 0, 0), k=15000, c=200)
+    rail_tournant = Glissiere(origine=m.moteur.position, k=1e5, c=2e2, targets=[masse_mobile], direction=v(1, 0, 0))
 
     # ajout d'un ressort en mettant une seconde particule fixe au centre du moteur
-    ressort_rappel = SpringDamper(L0=5, k=10, c=0.5, P0=masse_mobile, P2=Particule(position=m.moteur.position, name="Fixe"), active=True)
-    ressort_rappel.P2.fixed = True 
+    ressort_rappel = SpringDamper(L0=5, k=10, c=0.5, P0=masse_mobile, P2=Particule(position=m.moteur.position, name="Fixe", fixed=True), active=True)
 
     bras = BrasCentrifuge(m, rail_tournant, masse_mobile)
 
@@ -89,10 +90,10 @@ if __name__ == "__main__":
             
 
     uni.gameInteraction = MethodType(interaction, uni)
-    m.moteur.Um_max = 100.0
-    m.setTarget(10) # rad/s
+    # m.moteur.Um_max = 100.0
+    m.setTarget(5) # rad/s
     uni.simulateRealTime()
-    m.plot([moteur_caca])
+    m.plot()
     plt.show()
-    print("Temps de réponse centrifugeuse :", m.getTimeResponse())
+    print(m.getTimeResponse())
     

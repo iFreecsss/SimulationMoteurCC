@@ -21,6 +21,12 @@
 \usepackage{enumitem}
 \usepackage{afterpage}
 \usepackage{algorithm2e}
+\makeatletter
+\newlength{\boxed@align@width}
+\newcommand{\boxedalign}[2]{
+	#1 & \setlength{\boxed@align@width}{\widthof{$\displaystyle#1$}+0.1389em+\fboxsep+\fboxrule}
+	\hspace{-\boxed@align@width}\addtolength{\boxed@align@width}{-\fboxsep-\fboxrule}\boxed{\vphantom{#1}\hspace{\boxed@align@width}#2}}
+\makeatother
 \usetikzlibrary{shapes.geometric, arrows}
 \captionsetup{
 	justification=centering, %cente la légende
@@ -76,72 +82,63 @@
 	\section*{Introduction}
 	
 	
-		\section*{Solution analytique de $\Omega(t)$ en fonction de $U_m(t)$}
+		\section{Simulation d'un moteur à courant continu}
 		
-		\subsection*{1. Équations du système}
-		D'après le sujet du projet, le moteur à courant continu est régi par les équations suivantes :
+		\subsection{Solution analytique}
+		Rappelons dans un premier temps les relations électriques et mécaniques à partir desquelles se construit le modèle.
 		
-		\begin{itemize}
-			\item \textbf{Équation électrique} (loi des mailles) :
+		\begin{enumerate}
+			\item \textbf{Équation électrique}:
 			\begin{equation}
 				U_m(t) = E(t) + R \cdot i(t) + L \frac{di(t)}{dt}
+				\label{eq_elec}
 			\end{equation}
 			
-			\item \textbf{Équation mécanique} (principe fondamental de la dynamique) :
+			\item \textbf{Équation mécanique}:
 			\begin{equation}
 				J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = \Gamma(t)
+				\label{eq_meca}
 			\end{equation}
 			
-			\item \textbf{Equations de couplage} :
+			\item \textbf{Équations de couplage}:
 			\begin{equation}
-				\Gamma(t) = k_c \cdot i(t) \quad \text{et} \quad E(t) = k_e \cdot \Omega(t)
+				\begin{cases}
+					\Gamma(t) = k_c \cdot i(t) \\
+					E(t) = k_e \cdot \Omega(t)
+				\end{cases}
+				\label{eq_couplage}
 			\end{equation}
-		\end{itemize}
+		\end{enumerate}
 		
-		\subsection*{2. Hypothèse simplificatrice}
-		On suppose l'inductance de l'induit négligeable : $L \approx 0$.
-		L'équation électrique devient alors purement algébrique :
+		Par ailleurs, on suppose que l'inductance est négligeable ()$L \approx 0$).L'\autoref{eq_elec} devient :
 		\begin{equation}
 			U_m(t) = E(t) + R \cdot i(t) \implies i(t) = \frac{U_m(t) - E(t)}{R}
 		\end{equation}
 		
-		\subsection*{3. Démonstration}
-		En substituant l'expression du courant $i(t)$ dans l'équation mécanique, nous obtenons :
+		En injectant l'expression de $i(t)$ obtenue dans l'\autoref{eq_meca} on peut développer :
 		
+		\begin{align}
+			&J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = k_c \left( \frac{U_m(t) - k_e \cdot \Omega(t)}{R} \right)\notag\\
+			&J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = \frac{k_c}{R} U_m(t) - \frac{k_c k_e}{R} \Omega(t)\notag\\
+			&J \frac{d\Omega(t)}{dt} + \left( f + \frac{k_c k_e}{R} \right) \Omega(t) = \frac{k_c}{R} U_m(t)\notag\\
+			&\boxed{\tau \frac{d\Omega(t)}{dt} + \Omega(t) = K \cdot U_m(t)}\label{forme_cano}
+		\end{align}
+		
+		On remarque qu'il s'agit de la forme canonique du premier ordre, on peut alors identifier le gain statique $K$ et la constante de temps $\tau$ :
 		\begin{equation}
-			J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = k_c \left( \frac{U_m(t) - k_e \cdot \Omega(t)}{R} \right)
+		\begin{cases}
+			K = \frac{k_c}{R f + k_c k_e}\\
+			\tau = \frac{R J}{R f + k_c k_e}
+		\end{cases}
+		\label{syst_Ktau}
 		\end{equation}
 		
-		Développons pour regrouper les termes en $\Omega(t)$ :
-		\begin{equation}
-			J \frac{d\Omega(t)}{dt} + f \cdot \Omega(t) = \frac{k_c}{R} U_m(t) - \frac{k_c k_e}{R} \Omega(t)
-		\end{equation}
+		Enfin, pour trouver la réponse indicielle, on considère une entrée échelon $U_m(t) = U_0$ pour $t \ge 0$ et avec des conditions initiales nulles $\Omega(0)=0$. En combinant le système \ref{syst_Ktau} et l'\autoref{forme_cano}
 		
-		\begin{equation}
-			J \frac{d\Omega(t)}{dt} + \left( f + \frac{k_c k_e}{R} \right) \Omega(t) = \frac{k_c}{R} U_m(t)
-		\end{equation}
+		\begin{align}
+			&\Omega(t) = K \cdot U_0 \left( 1 - e^{-t/\tau} \right)\notag\\
+			&\boxed{ \Omega(t) = \frac{k_c U_0}{R f + k_c k_e} \left( 1 - \exp\left( \frac{-(R f + k_c k_e)t}{R J} \right) \right)}\label{sol_analytique}
+		\end{align}
 		
-		En divisant par le coefficient devant $\Omega(t)$, soit $\left( f + \frac{k_c k_e}{R} \right)$, on obtient la forme canonique du premier ordre :
-		\begin{equation}
-			\tau \frac{d\Omega(t)}{dt} + \Omega(t) = K \cdot U_m(t)
-		\end{equation}
-		
-		Avec les constantes identifiées :
-		\begin{itemize}
-			\item \textbf{Gain statique} : $K = \frac{k_c}{R f + k_c k_e}$
-			\item \textbf{Constante de temps} : $\tau = \frac{R J}{R f + k_c k_e}$
-		\end{itemize}
-		
-		\subsection*{4. Solution temporelle (Réponse indicielle)}
-		Pour une entrée en échelon de tension $U_m(t) = U_0$ pour $t \ge 0$ (avec conditions initiales nulles $\Omega(0)=0$), la solution de l'équation différentielle est :
-		
-		\begin{equation}
-			\Omega(t) = K \cdot U_0 \left( 1 - e^{-t/\tau} \right)
-		\end{equation}
-		
-		Soit en remplaçant $K$ et $\tau$ par leurs expressions :
-		\begin{equation}
-			\boxed{ \Omega(t) = \frac{k_c U_0}{R f + k_c k_e} \left( 1 - \exp\left( \frac{-(R f + k_c k_e)t}{R J} \right) \right) }
-		\end{equation}
-		
+		\subsection{Simulation}
 \end{document}
