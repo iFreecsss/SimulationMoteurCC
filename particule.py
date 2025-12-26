@@ -56,6 +56,7 @@ class Particule:
         ys = [p.y for p in self.position]
         plt.plot(xs, ys)
 
+    
 
     def gameDraw(self, screen, scale):
         X = int(scale * self.position[-1].x)
@@ -171,8 +172,10 @@ class SpringDamper:
         if self.active:
             p1 = self.P0.getPosition()
             p2 = self.P2.getPosition()
+
             start = (int(p1.x * scale), int(p1.y * scale))
             end = (int(p2.x * scale), int(p2.y * scale))
+
             pygame.draw.line(screen, (255, 0, 0), start, end, 2)
 
 class Fil(SpringDamper):
@@ -254,7 +257,7 @@ if __name__ == "__main__":
 
     gravite = Gravity(v(0, -9.81, 0))
 
-    rail = Glissiere(origine=v(50, 50, 0), direction=v(1, -0.5, 0), k=8000, c=100, name='Rail')
+    rail = Glissiere(origine=v(50, 50, 0), targets=[perle], direction=v(1, -0.5, 0), k=8000, c=100, name='Rail')
 
     def gameInteraction(self, events, keys):
         if keys[pygame.K_SPACE]:

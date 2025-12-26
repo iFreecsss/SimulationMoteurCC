@@ -49,51 +49,54 @@ class BrasCentrifuge:
         cy = int(self.moteur.position.y * scale)
         pygame.draw.circle(screen, (50, 50, 50), (cx, cy), 10)
 
+    
+    def plot(self):
+        import matplotlib.pyplot as plt
+        
+        ds = []
+        for p in self.particule.position:
+            d = p - self.moteur.position
+            ds.append(d.mod())
+
+        ys = self.moteur.speed_history
+
+        plt.figure(figsize=(20, 30))
+        plt.plot(ys, ds)
+
+
+
 
 if __name__ == "__main__":
-    from types import MethodType
     import matplotlib.pyplot as plt
 
     uni = Univers(name="Centrifugeuse", game=True)
 
-    moteur_caca = MoteurCC(position=v(50, 50, 0), name="Moteur Central")
-    m = ControlPID_vitesse(moteur_caca, 50, 10, 0.1)
+    moteur_base = MoteurCC(couple=0.1, visc=0.001, position=v(50, 50, 0), name="Moteur Central")
+    m = ControlPID_vitesse(moteur_base, 50, 0.1, 0.01)
 
     # particule qui bouge sur le rail
-    masse_mobile = Particule(masse=0.1, position=v(55, 50, 0), name="Particule")
+    masse_mobile = Particule(masse=1, position=v(55, 50, 0), name="Particule")
 
     # ajout de la glissière (position horizontale initialement mais va changer)
     rail_tournant = Glissiere(origine=m.moteur.position, k=1e5, c=2e2, targets=[masse_mobile], direction=v(1, 0, 0))
 
     # ajout d'un ressort en mettant une seconde particule fixe au centre du moteur
-    ressort_rappel = SpringDamper(L0=5, k=10, c=0.5, P0=masse_mobile, P2=Particule(position=m.moteur.position, name="Fixe", fixed=True), active=True)
+    ressort_rappel = SpringDamper(L0=5, k=5, c=5, P0=masse_mobile, P2=Particule(position=m.moteur.position, name="Fixe", fixed=True), active=True)
 
     bras = BrasCentrifuge(m, rail_tournant, masse_mobile)
 
-    uni.addMotors(m)
+    uni.addMotors(moteur_base)
     uni.addParticules(masse_mobile)
     uni.addGenerators(bras, ressort_rappel)
+    uni.addControlleurs(m)
 
-    def interaction(self, events, keys):
-        mo = self.moteurs[0].moteur
-        
-        # Contrôle de la tension du moteur
-        if keys[pygame.K_UP]:
-            mo.setVoltage(12.0)
-        elif keys[pygame.K_DOWN]:
-            mo.setVoltage(-12.0)
-        elif keys[pygame.K_SPACE]:
-            mo.setVoltage(0.0)
-        elif keys[pygame.K_b]:
-            mo.setVoltage(0.0) 
-            mo.omega = 0 
             
 
-    uni.gameInteraction = MethodType(interaction, uni)
-    # m.moteur.Um_max = 100.0
-    m.setTarget(5) # rad/s
+    m.setTarget(5)
     uni.simulateRealTime()
     m.plot()
     plt.show()
     print(m.getTimeResponse())
+    bras.plot()
+    plt.show()
     
