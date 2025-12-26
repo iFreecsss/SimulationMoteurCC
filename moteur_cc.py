@@ -25,9 +25,10 @@ class MoteurCC:
         self.theta = 0
 
         # Liste pour l'historique
-        self.time_history = []
-        self.speed_history = []
-        self.voltage_history = []
+        self.time_history = [0]
+        self.speed_history = [0]
+        self.voltage_history = [0]
+        self.position_history = [0]
         self.temps = 0
 
         # ajout des perturbations externes
@@ -172,6 +173,7 @@ class MoteurCC:
         self.voltage_history.append(self.Um)
         self.time_history.append(self.temps)
         self.speed_history.append(self.omega)
+        self.position_history.append(self.theta)
 
     def plot(self, modele_theorique=False):
         """
@@ -206,6 +208,16 @@ class MoteurCC:
                 vitesse_theo = K * self.Um * (1 - np.exp(-t / tau))
 
                 plt.plot(t, vitesse_theo, 'r--', label='Modèle analytique')
+
+    def plot_pos(self):
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        t = np.array(self.time_history)
+        positions = np.array(self.position_history)
+
+        plt.plot(t, positions, color=self.color, label=f"{self.name}")
+        
 
     def gameDraw(self, screen, scale):
         """

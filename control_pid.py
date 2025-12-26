@@ -10,8 +10,8 @@ class ControlPID_vitesse:
         self.moteur = moteur
 
         self.vitesse_desiree = 0
-        self.erreur_precedente = 0
-        self.integrale = 0
+        self.erreur_prec = 0
+        self.int = 0
 
 
     def __str__(self):
@@ -46,7 +46,7 @@ class ControlPID_vitesse:
 
         for t, v in zip(ts, vs):
             if v > seuil:
-                return t
+                return f"Temps de réponse à {pourcent}% : {t} s"
         return f"Temps de réponse à {pourcent}% non atteint."
 
 
@@ -55,18 +55,18 @@ class ControlPID_vitesse:
         vitesse_actuelle = self.moteur.getSpeed()
         erreur = self.vitesse_desiree - vitesse_actuelle
 
-        self.integrale += erreur * step
-        derivee = (erreur - self.erreur_precedente) / step if step > 0 else 0
+        self.int += erreur * step
+        derivee = (erreur - self.erreur_prec) / step if step > 0 else 0
 
         # K_P : si je suis loin de la cible alors j'augmente la tension
         # K_I : si ça fait longtemps qu'on a une erreur alors j'augmente la tension
         # K_D : si je me rapproche vite de la cible alors je diminue la tension pour éviter le dépassement
-        tension = (self.K_P * erreur) + (self.K_I * self.integrale) + (self.K_D * derivee)
+        tension = (self.K_P * erreur) + (self.K_I * self.int) + (self.K_D * derivee)
 
         self.moteur.setVoltage(tension)
         self.moteur.simule(step)
 
-        self.erreur_precedente = erreur
+        self.erreur_prec = erreur
 
     def plot(self, moteur_compare=None):
         import matplotlib.pyplot as plt
@@ -145,3 +145,88 @@ if __name__ == "__main__":
 
     print("Erreur statique théorique PID :", control_PID.getTheoricalStaticError())
     print("Erreur statique simulée PID :", control_PID.getStaticError())
+
+
+class ControlPID_position:
+    def __init__(self, moteur, K_P, K_I, K_D):
+        self.moteur = moteur
+        self.K_P = K_P
+        self.K_I = K_I
+        self.K_D = K_D
+
+        self.position_desiree = 0.0
+        self.erreur_prec = 0.0
+        self.int = 0.0
+
+    def setTarget(self, angle_rad):
+        self.position_desiree = angle_rad
+
+    def simule(self, step):
+        
+        erreur = self.position_desiree - self.moteur.getPosition()
+
+        # terme intégral
+        self.int += erreur * step
+
+        # terme dérivé
+        # d erreur /dt = d(target - theta)/dt = 0 - d theta/dt = -vitesse angulaire
+        derivee = -self.moteur.getSpeed()
+
+        tension = (self.K_P * erreur) + (self.K_I * self.int) + (self.K_D * derivee)
+
+        self.moteur.setVoltage(tension)
+        self.moteur.simule(step)
+
+        self.erreur_prec = erreur
+        
+    def getStaticError(self):
+        return self.position_desiree - self.moteur.getPosition()
+
+    def plot(self, moteur_compare=None):
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        plt.figure(figsize=(30, 20))
+
+        self.moteur.plot_pos()
+        plt.legend()
+
+        if moteur_compare:
+            for moteur in moteur_compare:
+                moteur.plot_pos()
+                plt.legend()
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from math import pi
+
+    m_bf_PID = MoteurCC(name="Moteur BF PID")
+    m_bf_PI = MoteurCC(name="Moteur BF PI")
+    m_bf_P = MoteurCC(name="Moteur BF P")
+
+    control_PID = ControlPID_position(m_bf_PID, K_P=30, K_I=50, K_D=10)
+    control_PI = ControlPID_position(m_bf_PI, K_P=30, K_I=50, K_D=0.0)
+    control_P = ControlPID_position(m_bf_P, K_P=30, K_I=0.0, K_D=0.0)
+
+    t = 0
+    step = 0.001
+    duration = 10
+
+    target = pi/2
+
+    while t < duration:
+
+        control_PID.setTarget(target)
+        control_PI.setTarget(target)
+        control_P.setTarget(target)
+
+        control_PID.simule(step)
+        control_PI.simule(step)
+        control_P.simule(step)
+
+        t += step
+
+    control_PID.plot([m_bf_PI, m_bf_P])
+    plt.show()
+
+
