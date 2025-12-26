@@ -94,58 +94,58 @@ class ControlPID_vitesse:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
 
-    m_bo = MoteurCC(name="Moteur BO")
-    m_bf_PID = MoteurCC(name="Moteur BF PID")
-    m_bf_PI = MoteurCC(name="Moteur BF PI")
-    m_bf_P = MoteurCC(name="Moteur BF P")
+    def run_sim_vitesse(target=2.0, duration=3.0, step=0.001):
+        import matplotlib.pyplot as plt
 
-    control_PID = ControlPID_vitesse(m_bf_PID, K_P=20, K_I=50, K_D=0.1)
-    control_PI = ControlPID_vitesse(m_bf_PI, K_P=20, K_I=100, K_D=0.0)
-    control_P = ControlPID_vitesse(m_bf_P, K_P=20, K_I=0.0, K_D=0.0)
+        m_bo = MoteurCC(name="Moteur BO")
+        m_bf_PID = MoteurCC(name="Moteur BF PID")
+        m_bf_PI = MoteurCC(name="Moteur BF PI")
+        m_bf_P = MoteurCC(name="Moteur BF P")
 
-    t = 0
-    step = 0.001
-    duration = 3.0
+        control_PID = ControlPID_vitesse(m_bf_PID, K_P=20, K_I=50, K_D=0.1)
+        control_PI = ControlPID_vitesse(m_bf_PI, K_P=20, K_I=100, K_D=0.0)
+        control_P = ControlPID_vitesse(m_bf_P, K_P=20, K_I=0.0, K_D=0.0)
 
-    target = 2 # rad/s
-    K = m_bo.Kc / (m_bo.R * m_bo.Nu + m_bo.Kc * m_bo.Ke)
+        t = 0
 
-    while t < duration:
+        K = m_bo.Kc / (m_bo.R * m_bo.Nu + m_bo.Kc * m_bo.Ke)
 
-        m_bo.setVoltage(target/K)
-        control_PID.setTarget(target)
-        control_PI.setTarget(target)
-        control_P.setTarget(target)
+        while t < duration:
 
-        control_PID.simule(step)
-        control_PI.simule(step)
-        control_P.simule(step)
-        m_bo.simule(step)
+            m_bo.setVoltage(target/K)
+            control_PID.setTarget(target)
+            control_PI.setTarget(target)
+            control_P.setTarget(target)
 
-        t += step
+            control_PID.simule(step)
+            control_PI.simule(step)
+            control_P.simule(step)
+            m_bo.simule(step)
 
-    control_PID.plot([m_bo, m_bf_PI, m_bf_P])
-    plt.show()
+            t += step
 
-    plt.figure(figsize=(30, 20))
-    control_PID.plotVoltage()
-    control_PI.plotVoltage()
-    control_P.plotVoltage()
-    plt.show()
+        control_PID.plot([m_bo, m_bf_PI, m_bf_P])
+        plt.show()
 
-    print("Temps de réponse PID :", control_PID.getTimeResponse())
-    print("Temps de réponse PI :", control_PI.getTimeResponse())
-    print("Temps de réponse P :", control_P.getTimeResponse())
+        plt.figure(figsize=(30, 20))
+        control_PID.plotVoltage()
+        control_PI.plotVoltage()
+        control_P.plotVoltage()
+        plt.show()
 
-    # pas de dépassement pour le PI car on a de une viscosité relativement élevée par rapport à l'inertie.
-    # Par contre en augmentant K_I je peux en faire apparaître.
-    # erreur stat theo = erreur stat simu
+        print("Temps de réponse PID :", control_PID.getTimeResponse())
+        print("Temps de réponse PI :", control_PI.getTimeResponse())
+        print("Temps de réponse P :", control_P.getTimeResponse())
 
-    print("Erreur statique théorique PID :", control_PID.getTheoricalStaticError())
-    print("Erreur statique simulée PID :", control_PID.getStaticError())
+        # pas de dépassement pour le PI car on a de une viscosité relativement élevée par rapport à l'inertie.
+        # Par contre en augmentant K_I je peux en faire apparaître.
+        # erreur stat theo = erreur stat simu
 
+        print("Erreur statique théorique PID :", control_PID.getTheoricalStaticError())
+        print("Erreur statique simulée PID :", control_PID.getStaticError())
+
+    # run_sim_vitesse(target=2.0, duration=5.0, step=0.001)
 
 class ControlPID_position:
     def __init__(self, moteur, K_P, K_I, K_D):
@@ -184,9 +184,6 @@ class ControlPID_position:
 
     def plot(self, moteur_compare=None):
         import matplotlib.pyplot as plt
-        import numpy as np
-
-        plt.figure(figsize=(30, 20))
 
         self.moteur.plot_pos()
         plt.legend()
@@ -196,37 +193,55 @@ class ControlPID_position:
                 moteur.plot_pos()
                 plt.legend()
 
+
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    from math import pi
+    
+    def run_sim_pos(duration=10, target=1.7, step=0.001):
+        import matplotlib.pyplot as plt
 
-    m_bf_PID = MoteurCC(name="Moteur BF PID")
-    m_bf_PI = MoteurCC(name="Moteur BF PI")
-    m_bf_P = MoteurCC(name="Moteur BF P")
+        m_bf_PID = MoteurCC(name="Moteur BF PID")
+        m_bf_PI = MoteurCC(name="Moteur BF PI")
+        m_bf_P = MoteurCC(name="Moteur BF P")
 
-    control_PID = ControlPID_position(m_bf_PID, K_P=30, K_I=50, K_D=10)
-    control_PI = ControlPID_position(m_bf_PI, K_P=30, K_I=50, K_D=0.0)
-    control_P = ControlPID_position(m_bf_P, K_P=30, K_I=0.0, K_D=0.0)
+        control_PID = ControlPID_position(m_bf_PID, K_P=30, K_I=50, K_D=10)
+        control_PI = ControlPID_position(m_bf_PI, K_P=30, K_I=50, K_D=0.0)
+        control_P = ControlPID_position(m_bf_P, K_P=30, K_I=0.0, K_D=0.0)
 
-    t = 0
-    step = 0.001
-    duration = 10
+        t = 0
 
-    target = pi/2
+        while t < duration:
 
-    while t < duration:
+            control_PID.setTarget(target)
+            control_PI.setTarget(target)
+            control_P.setTarget(target)
 
-        control_PID.setTarget(target)
-        control_PI.setTarget(target)
-        control_P.setTarget(target)
+            control_PID.simule(step)
+            control_PI.simule(step)
+            control_P.simule(step)
 
-        control_PID.simule(step)
-        control_PI.simule(step)
-        control_P.simule(step)
+            t += step
 
-        t += step
+        control_PID.plot([m_bf_PI, m_bf_P])
+        plt.show()
 
-    control_PID.plot([m_bf_PI, m_bf_P])
-    plt.show()
+    # run_sim_pos(duration=5, target=1.7)
 
+    def run_compare_PD(target=1.7, duration=5, step=0.001):
+        # influence des gains P ET D
+        import numpy as np
+        import matplotlib.pyplot as plt
 
+        Ds = np.linspace(0, 20, 2)
+        Ps = np.linspace(10, 100, 2)
+        
+        plt.figure(figsize=(30, 20))
+        for D in Ds:
+            for P in Ps:
+                m_influence = MoteurCC(name=f"Moteur BF PID (P={P}, D={D})")
+                control_PID = ControlPID_position(m_influence, K_P=P, K_I=50, K_D=D)
+                control_PID.setTarget(target)
+                control_PID.simule(duration)
+                control_PID.plot()
+        plt.show()
+
+    run_compare_PD()

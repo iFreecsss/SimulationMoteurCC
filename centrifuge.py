@@ -67,36 +67,44 @@ class BrasCentrifuge:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    uni = Univers(name="Centrifugeuse", game=True)
-
-    moteur_base = MoteurCC(couple=0.1, visc=0.001, position=v(50, 50, 0), name="Moteur Central")
-    m = ControlPID_vitesse(moteur_base, 50, 0.1, 0.01)
-
-    # particule qui bouge sur le rail
-    masse_mobile = Particule(masse=1, position=v(55, 50, 0), name="Particule")
-
-    # ajout de la glissière (position horizontale initialement mais va changer)
-    rail_tournant = Glissiere(origine=m.moteur.position, k=1e5, c=2e2, targets=[masse_mobile], direction=v(1, 0, 0))
-
-    # ajout d'un ressort en mettant une seconde particule fixe au centre du moteur
-    ressort_rappel = SpringDamper(L0=5, k=5, c=5, P0=masse_mobile, P2=Particule(position=m.moteur.position, name="Fixe", fixed=True), active=True)
-
-    bras = BrasCentrifuge(m, rail_tournant, masse_mobile)
-
-    uni.addMotors(moteur_base)
-    uni.addParticules(masse_mobile)
-    uni.addGenerators(bras, ressort_rappel)
-    uni.addControlleurs(m)
-
-            
-
-    m.setTarget(5)
-    uni.simulateRealTime()
-    m.plot()
-    plt.show()
-    print(m.getTimeResponse())
-    bras.plot()
-    plt.show()
     
+    def run_centrifuge(target=2.0, moteur=None, masse=None, glissiere=None, springdamper=None, controlleur=None):
+        import matplotlib.pyplot as plt
+
+        uni = Univers(name="Centrifugeuse", game=True)
+
+        if moteur is None:
+            moteur = MoteurCC(couple=0.1, visc=0.001, position=v(50, 50, 0), name="Moteur Central")
+
+        if controlleur is None:
+            controlleur = ControlPID_vitesse(moteur, 50, 0.1, 0.01)
+
+        # particule qui bouge sur le rail
+        if masse is None:
+            masse = Particule(masse=1, position=v(55, 50, 0), name="Particule")
+
+        # ajout de la glissière (position horizontale initialement mais va changer)
+        if glissiere is None:
+            glissiere = Glissiere(origine=controlleur.moteur.position, k=1e5, c=2e2, targets=[masse], direction=v(1, 0, 0))
+
+        # ajout d'un ressort en mettant une seconde particule fixe au centre du moteur
+        if springdamper is None:
+            springdamper = SpringDamper(L0=5, k=5, c=5, P0=masse, P2=Particule(position=controlleur.moteur.position, name="Fixe", fixed=True), active=True)
+
+        bras = BrasCentrifuge(controlleur, glissiere, masse)
+
+        uni.addMotors(moteur)
+        uni.addParticules(masse)
+        uni.addGenerators(bras, springdamper)
+        uni.addControlleurs(controlleur)
+
+        controlleur.setTarget(target)
+        uni.simulateRealTime()
+        controlleur.plot()
+        plt.show()
+        print(controlleur.getTimeResponse())
+        bras.plot()
+        plt.show()
+    
+    run_centrifuge()
+        
