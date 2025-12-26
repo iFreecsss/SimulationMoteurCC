@@ -1,5 +1,3 @@
-from moteur_cc import MoteurCC
-
 class ControlPID_vitesse:
     def __init__(self,moteur, K_P, K_I, K_D):
 
@@ -94,6 +92,7 @@ class ControlPID_vitesse:
 
 
 if __name__ == "__main__":
+    from moteur_cc import MoteurCC
 
     def run_sim_vitesse(target=2.0, duration=3.0, step=0.001):
         import matplotlib.pyplot as plt
@@ -195,8 +194,10 @@ class ControlPID_position:
 
 
 if __name__ == "__main__":
-    
-    def run_sim_pos(duration=10, target=1.7, step=0.001):
+    from moteur_cc import MoteurCC
+    from math import pi
+
+    def run_sim_pos(target=1.57, duration=10.0, step=0.001):
         import matplotlib.pyplot as plt
 
         m_bf_PID = MoteurCC(name="Moteur BF PID")
@@ -221,27 +222,75 @@ if __name__ == "__main__":
 
             t += step
 
+        plt.figure(figsize=(30, 20))
+        plt.axhline(target, color='r', alpha=0.5, label='Consigne')
         control_PID.plot([m_bf_PI, m_bf_P])
+        plt.title("Contrôle de position avec PID, PI et P")
+        plt.xlabel("Temps (s)")
+        plt.ylabel("Position (rad)")
+        plt.grid()
         plt.show()
 
-    # run_sim_pos(duration=5, target=1.7)
+    run_sim_pos(target=pi/2)
 
-    def run_compare_PD(target=1.7, duration=5, step=0.001):
-        # influence des gains P ET D
-        import numpy as np
+    def run_compare_PD(target=1.57, duration=10.0, step=0.001):
         import matplotlib.pyplot as plt
+        import numpy as np
 
-        Ds = np.linspace(0, 20, 2)
-        Ps = np.linspace(10, 100, 2)
-        
+        Ds = [0.1,5.0,30.0, 100.0]
+        Ps = [10.0, 20.0, 30.0, 80.0, 1e4]
+
         plt.figure(figsize=(30, 20))
         for D in Ds:
-            for P in Ps:
-                m_influence = MoteurCC(name=f"Moteur BF PID (P={P}, D={D})")
-                control_PID = ControlPID_position(m_influence, K_P=P, K_I=50, K_D=D)
-                control_PID.setTarget(target)
-                control_PID.simule(duration)
-                control_PID.plot()
+            moteur = MoteurCC(name=f"PD D={D}")
+            pid = ControlPID_position(moteur, K_P=20, K_I=0, K_D=D)
+
+            t = 0
+            times = []
+            positions = []
+
+            while t < duration:
+                pid.setTarget(target)
+                pid.simule(step)
+                times.append(t)
+                positions.append(moteur.getPosition())
+                t += step
+
+            plt.plot(times, positions, label=f"D={D}")
+        
+
+        plt.axhline(target, color='r', alpha=0.5, label='Consigne')
+        plt.xlabel("Temps (s)")
+        plt.ylabel("Position (rad)")
+        plt.grid()
+        plt.legend()
         plt.show()
 
-    run_compare_PD()
+
+        plt.figure(figsize=(30, 20))
+        for P in Ps:
+            moteur = MoteurCC(name=f"P P={P}")
+            pid = ControlPID_position(moteur, K_P=P, K_I=0, K_D=0)
+
+            t = 0
+            times = []
+            positions = []
+
+            while t < duration:
+                pid.setTarget(target)
+                pid.simule(step)
+                times.append(t)
+                positions.append(moteur.getPosition())
+                t += step
+
+            plt.plot(times, positions, label=f"P={P}")
+
+
+        plt.axhline(target, color='r', alpha=0.5, label='Consigne')
+        plt.xlabel("Temps (s)")
+        plt.ylabel("Position (rad)")
+        plt.grid()
+        plt.legend()
+        plt.show()
+
+    run_compare_PD(target=pi/2) 
