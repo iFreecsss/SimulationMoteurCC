@@ -4,7 +4,8 @@ from vecteur3d import Vector3D as v
 from control_pid import ControlPID_vitesse
 from multiverse import Univers
 from moteur_cc import MoteurCC
-from particule import Particule, Glissiere, SpringDamper, Gravity, Viscosity
+from particule import Particule
+from forces_liaisons import *
 
 class BrasCentrifuge:
     def __init__(self, moteur, glissiere, particule):
