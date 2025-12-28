@@ -1,4 +1,4 @@
-from math import cos, sin
+from math import cos, sin, atan2
 
 from torseur import *
 from vecteur3d import Vector3D as v
@@ -115,59 +115,120 @@ if __name__ == "__main__":
 
 class Pendule:
     def __init__(self, attache_pos=v(0, 0, 0), longueur=1.0, angle_init=0.0):
-        from math import cos,sin,sqrt
-
+        
         self.ancre = Particule(fixed=True, position=attache_pos, color=(0, 0, 0))
-        self.masse = Particule(position=attache_pos + longueur*v(sin(angle_init), -cos(angle_init), 0), color=(255, 0, 0))
+        pos_relative = longueur * v(sin(angle_init), -cos(angle_init), 0)
+        self.masse = Particule(masse=1.0, position=attache_pos + pos_relative, color=(255, 0, 0))
+
         self.longueur = longueur
+        
         self.angle = [angle_init]
-        self.vitesse = []
+        self.vitesse = [0.0]
+        self.temps = [0.0]
+        
         self.fil = Fil(P0=self.ancre, P2=self.masse)
 
     def gameDraw(self, screen, scale):
         self.ancre.gameDraw(screen, scale)
         self.masse.gameDraw(screen, scale)
-        self.fil.drawArea(screen, scale)
-
-    def getAngle(self):
-        return self.angle[-1]
+        self.fil.gameDraw(screen, scale)
     
-    def simule(self, step):
+    def simule(self, step_dt):
+        
         self.fil.setForce(self.masse)
+        
+        delta = self.masse.position[-1] - self.ancre.position[-1]
+        
+        theta_actuel = atan2(delta.x, -delta.y)
+        
+        self.angle.append(theta_actuel)
+        
+        speed = self.masse.getSpeed()
+        self.vitesse.append(speed)
+        self.temps.append(self.temps[-1] + step_dt)
 
-        self.angle.append()
-        self.vitesse.append(self.masse.getSpeed())
+    def applyEffort(self, force_vector):
+        self.masse.applyForce(force_vector)
+        
+    def getPosition(self):
+        return self.masse.position[-1]
 
+    def getParticles(self):
+        return [self.ancre, self.masse]
 
     def plot(self):
         pass
 
 if __name__ == "__main__":
+    from assemblages import *
+    from multiverse import *
 
     def run_pendule():
         from types import MethodType
         import numpy as np
 
-        uni = Univers(name="Pendule Simple", game=True, dimensions=(50, 50))
-        p = Pendule(attache_pos=v(25, 40, 0), longueur=10.0, angle_init=np.pi/4)
-        uni.addObjets(p.ancre, p.masse)
-
+        uni = Univers(name="Pendule Simple", game=True, dimensions=(10, 10))
+        p = Pendule(attache_pos=v(5, 5, 0), longueur=1.0, angle_init=-np.pi/4)
         gravite = Gravity(v(0, -9.81, 0))
 
-        def gameInteraction(self, events, keys):
-            vitesse_deplacement = 0.1
-            if keys[pygame.K_LEFT]:p.ancre.position[-1].x -= vitesse_deplacement
-            if keys[pygame.K_RIGHT]:p.ancre.position[-1].x += vitesse_deplacement
-            if keys[pygame.K_UP]:p.ancre.position[-1].y += vitesse_deplacement
-            if keys[pygame.K_DOWN]:p.ancre.position[-1].y -= vitesse_deplacement
-
-
-        uni.addObjets(gravite, p.fil)
-        uni.gameInteraction = MethodType(gameInteraction, uni)
-
+        uni.addObjets(gravite, p.ancre, p.masse, p)
         uni.simulateRealTime()
+        
+        p.plot()
 
     # run_pendule()
+
+class PenduleBarre2D:
+    def __init__(self, largeur_barre=0.1, longueur_barre=1.0, angle_init=0.0, centre_barre=v(), pos_piv_barre=-1, pos_piv_uni=v(5,5,0)):
+
+        self.barre = Barre2D(mass=1.0, long=longueur_barre, large=largeur_barre, theta=angle_init, centre=centre_barre)
+        self.pivot = Pivot(barre=self.barre, position_pivot_barre=pos_piv_barre, position_pivot_univers=pos_piv_uni)
+        
+    def gameDraw(self, screen, scale):
+        self.barre.gameDraw(screen, scale)
+        self.pivot.gameDraw(screen, scale)
+    
+    def simule(self, step):
+        self.pivot.simule(step)
+
+    def applyEffort(self, *args, **kwargs):
+        self.barre.applyEffort(*args, **kwargs)
+        
+    def getPosition(self):
+        return self.barre.getPosition()
+
+if __name__ == "__main__":
+
+    from assemblages import *
+
+    def run_pendule_barre():
+        from types import MethodType
+        import numpy as np
+
+        uni = Univers(name="Pendule Barre", game=True, dimensions=(10, 10))
+
+        pb = PenduleBarre2D(angle_init=-np.pi/4)
+        g = Gravity(v(0, -9.81, 0))
+
+        uni.addObjets(pb, g)
+        uni.simulateRealTime()
+
+    # run_pendule_barre()
+
+    def run_both():
+        import numpy as np
+
+        L0 = 1.0
+
+        uni = Univers(name="Pendule Simple", game=True, dimensions=(10, 10))
+        p = Pendule(attache_pos=v(1.5, 5, 0), longueur=L0, angle_init=np.pi/4)
+        gravite = Gravity(v(0, -9.81, 0))
+        pb = PenduleBarre2D(pos_piv_uni=v(3.5, 5, 0), longueur_barre=2*L0,angle_init=-np.pi/4)
+
+        uni.addObjets(gravite, p.ancre, p.masse, p, pb)
+        uni.simulateRealTime()
+
+    run_both()
 
 class TurtleBot:
     def __init__(self, position=v(0,0,0), orientation=0, name='TurtleBot', color=None):
@@ -270,4 +331,4 @@ if __name__ == "__main__":
 
         uni.simulateRealTime()
 
-    run_turtlemotobot()
+    # run_turtlemotobot()
