@@ -107,13 +107,14 @@ if __name__ == "__main__":
 from torseur import Torseur
 
 class Barre2D:
-    def __init__(self, mass=1.0, long=1.0, theta=0.0, pos=v(0,0,0), fixed=False, color='red', nom='barre'):
+    def __init__(self, mass=1.0, long=1.0, large=0.1, theta=0.0, centre=v(0,0,0), fixed=False, color='red', nom='barre'):
         # Physique
         self.mass = mass
         self.long = long
-        self.J = (1/12) * self.mass * self.long**2
-        
-        self.G = pos
+        self.large = large
+        self.J = (1/12) * self.mass * (self.long**2 + self.large**2)
+
+        self.G = centre
         self.theta = theta
         
         self.vitesse = v(0,0,0)
@@ -136,7 +137,7 @@ class Barre2D:
     def getSpeed(self):
         return self.vitesse
 
-    def applyForce(self, Force=v(), Torque=v(),Point=0):
+    def applyEffort(self, Force=v(), Torque=v(),Point=0):
         if self.fixed:
             return
         
@@ -184,19 +185,35 @@ class Barre2D:
         self.ts.append(self.ts[-1] + step)
 
     def gameDraw(self, screen, scale):
-        
-        u_barre = v(cos(self.theta), sin(self.theta), 0)
-        half = (self.long / 2.0)
-        
-        p1 = self.G - u_barre * half
-        p2 = self.G + u_barre * half
 
-        start = (int(p1.x * scale), int(p1.y * scale))
-        end = (int(p2.x * scale), int(p2.y * scale))
+        u = v(cos(self.theta), sin(self.theta), 0)
+        n = v(-sin(self.theta), cos(self.theta), 0)
+        
+        L2 = self.long / 2.0
+        l2 = self.large / 2.0
+        
+        # Coin 1 : Avant Gauche
+        c1 = self.G + (u * L2) + (n * l2)
+        # Coin 2 : Arrière Gauche
+        c2 = self.G - (u * L2) + (n * l2)
+        # Coin 3 : Arrière Droite
+        c3 = self.G - (u * L2) - (n * l2)
+        # Coin 4 : Avant Droite
+        c4 = self.G + (u * L2) - (n * l2)
+        
+        points_poly = [
+            (int(c1.x * scale), int(c1.y * scale)),
+            (int(c2.x * scale), int(c2.y * scale)),
+            (int(c3.x * scale), int(c3.y * scale)),
+            (int(c4.x * scale), int(c4.y * scale))
+        ]
         
         c = self.color if not isinstance(self.color, str) else pygame.Color(self.color)
-        pygame.draw.line(screen, c, start, end, 5)
         
+        pygame.draw.polygon(screen, c, points_poly)
+        pygame.draw.polygon(screen, (0,0,0), points_poly, 2)
+
+        # dessin d'un point au centre de gravité
         cg = (int(self.G.x * scale), int(self.G.y * scale))
         pygame.draw.circle(screen, (0,0,0), cg, 3)
 
@@ -205,7 +222,7 @@ class Barre2D:
 
 if __name__ == "__main__":
     uni = Univers(dimensions=(10, 10))
-    b = Barre2D(pos=v(5, 5, 0))
+    b = Barre2D(centre=v(5, 5, 0))
     uni.addObjects(b)
     uni.addGenerators(Gravity(g=v(0, -9.81, 0)), Viscosity(15, centre_zone=v(5, 2, 0)))
     uni.simulateRealTime()

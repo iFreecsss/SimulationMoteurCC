@@ -57,6 +57,8 @@ class Univers:
             p.simule(self.step)
 
         for o in self.objects:
+            for source in self.generators:
+                source.setForce(o)
             o.simule(self.step)
 
 

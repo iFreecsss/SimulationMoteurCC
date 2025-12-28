@@ -106,14 +106,17 @@ class Viscosity:
         self.rayon_zone = rayon_zone
         self.centre_zone = centre_zone
 
-    def setForce(self,particule):
+    def setForce(self,objet):
         if self.active:
-            distance = (particule.getPosition() - self.centre_zone).mod()
+            distance = (objet.getPosition() - self.centre_zone).mod()
             if distance > self.rayon_zone:
                 return
-            f = particule.getSpeed() * (-self.coefficient)
-            particule.applyForce(f)
-    
+            f = objet.getSpeed() * (-self.coefficient)
+            if isinstance(objet, Particule):
+                objet.applyForce(f)
+            else:
+                objet.applyEffort(f)
+
     def drawArea(self, screen, scale):
         X = int(scale * self.centre_zone.x)
         Y = int(scale * self.centre_zone.y)
@@ -127,9 +130,13 @@ class Gravity:
         self.g = g
         self.active = active
 
-    def setForce(self, particule):
+    def setForce(self, objet):
         if self.active:
-            particule.applyForce(self.g)
+            if isinstance(objet, Particule):
+                objet.applyForce(self.g)
+            else:
+                objet.applyEffort(self.g)
+
 
 
 class SpringDamper:
@@ -245,7 +252,9 @@ class Glissiere:
             p1 = (int(start.x * scale), int(start.y * scale))
             
             pygame.draw.line(screen, (80, 80, 80), p0, p1, 3)
-            
+
+class Bordure:
+    pass
 
 class Pendule:
     def __init__(self, attache_pos=v(0, 0, 0), longueur=1.0, angle_init=0.0):
