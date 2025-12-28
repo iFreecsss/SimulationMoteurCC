@@ -237,7 +237,7 @@ class Glissiere:
 
 if __name__ == "__main__":
     from multiverse import Univers
-    
+
     from forces_liaisons import *
     from particule import *
 

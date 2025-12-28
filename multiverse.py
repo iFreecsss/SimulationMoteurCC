@@ -53,7 +53,7 @@ class Univers:
                 self.objets['liaisons'].append(o)
             elif isinstance(o, (Glissiere, Pivot, BrasCentrifuge)):
                 self.objets['generators'].append(o)
-            elif isinstance(o, (Barre2D, Pendule, TurtleBot)):
+            elif isinstance(o, (Barre2D, Pendule, TurtleBot, PenduleBarre2D)):
                 self.objets['objets'].append(o)
             else:
                 print('Objet de type inconnu :', o)

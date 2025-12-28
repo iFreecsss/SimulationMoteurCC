@@ -66,8 +66,8 @@ class Particule:
         X = int(scale * self.position[-1].x)
         Y = int(scale * self.position[-1].y)
 
-        VX = int(scale * self.speed[-1].x)
-        VY = int(scale * self.speed[-1].y)
+        # VX = int(scale * self.speed[-1].x)
+        # VY = int(scale * self.speed[-1].y)
         
         size = 5
         
@@ -75,7 +75,7 @@ class Particule:
 
             
         pygame.draw.circle(screen,c,(X,Y),size*2,size)
-        pygame.draw.line(screen,c,(X,Y),(X+VX,(Y+VY)),size)
+        # pygame.draw.line(screen,c,(X,Y),(X+VX,(Y+VY)),size)
 
 class Barre2D:
     def __init__(self, mass=1.0, long=1.0, large=0.1, theta=0.0, centre=v(0,0,0), fixed=False, color='red', nom='barre'):
@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
     from multiverse import Univers
     from forces_liaisons import *
-    # obligé d'importer le module lui même car sinon l'objet barre2D n'est pas traité car considéré différent
+    # obligé d'importer le module lui même car sinon l'objet barre2D n'est pas traitée car considérée différent
     from particule import *
 
     uni = Univers(dimensions=(10, 10))
