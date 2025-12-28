@@ -1,8 +1,8 @@
 import pygame
+from pygame.locals import *
 from vecteur3d import Vector3D as v
-import particule as p
-from math import sqrt, cos, sin
 from torseur import Torseur
+from math import cos, sin
 
 class Force:
     
@@ -40,12 +40,12 @@ class Viscosity:
             if distance > self.rayon_zone:
                 return
             f = objet.getSpeed() * (-self.coefficient)
-            if isinstance(objet, p.Particule):
+            if hasattr(objet, 'applyForce'):
                 objet.applyForce(f)
             else:
                 objet.applyEffort(f)
 
-    def drawArea(self, screen, scale):
+    def gameDraw(self, screen, scale):
         X = int(scale * self.centre_zone.x)
         Y = int(scale * self.centre_zone.y)
         R = int(scale * self.rayon_zone)
@@ -60,12 +60,10 @@ class Gravity:
 
     def setForce(self, objet):
         if self.active:
-            if isinstance(objet, p.Particule):
+            if hasattr(objet, 'applyForce'):
                 objet.applyForce(self.g)
             else:
                 objet.applyEffort(self.g)
-
-
 
 class SpringDamper:
     def __init__(self, L0, k, c, P0, P2, name='spring damper', active=True):
@@ -103,7 +101,7 @@ class SpringDamper:
             else:
                 particule.applyForce(u * (-f))
 
-    def drawArea(self, screen, scale):
+    def gameDraw(self, screen, scale):
         if self.active:
             p1 = self.P0.getPosition()
             p2 = self.P2.getPosition()
@@ -118,10 +116,7 @@ class Fil(SpringDamper):
         L0 = (P2.getPosition() - P0.getPosition()).mod()
         super().__init__(L0=L0, k=5000, c=100, P0=P0, P2=P2, name=name, active=active)
 
-
-
-
-class LiaisonPivot:
+class Pivot:
     def __init__(self, barre, position_pivot_barre=0, position_pivot_univers=v()):
 
         self.barre = barre
@@ -157,11 +152,11 @@ class LiaisonPivot:
         
         # Si le pivot est à droite, G est à gauche
         # Si le pivot est à gauche, G est à droite
-        signe = -1 if self.pos_barre > 0 else 1
-        if self.pos_barre == 0: signe = 0
-            
-        vector_P_to_G = u * (self.dist_G_pivot * signe)
-        
+        if self.pos_barre < 0:
+            vector_P_to_G = u * self.dist_G_pivot
+        else:
+            vector_P_to_G = u * -self.dist_G_pivot
+
         self.barre.G = self.pos_univers + vector_P_to_G
         
         # vide le torseur de la barre
@@ -175,9 +170,6 @@ class LiaisonPivot:
         px = int(self.pos_univers.x * scale)
         py = int(self.pos_univers.y * scale)
         pygame.draw.circle(screen, (0, 0, 0), (px, py), 5)
-
-
-
 
 class Glissiere:
     def __init__(self, origine, direction, targets=[], k=1e6, c=1e2, longueur_visuelle=1000, name='glissiere', active=True):
@@ -232,7 +224,7 @@ class Glissiere:
         
         particule.applyForce(f_rappel + f_amortissement)
 
-    def drawArea(self, screen, scale, draw=False):
+    def gameDraw(self, screen, scale, draw=False):
         if self.active and draw:
             start = self.origine + self.direction * (self.longueur_visuelle)
             
@@ -241,23 +233,44 @@ class Glissiere:
             
             pygame.draw.line(screen, (80, 80, 80), p0, p1, 3)
 
+if __name__ == "__main__":
+    from multiverse import Univers
+    from particule import Particule
+
+    def run_glissiere():
+
+        uni = Univers(name="Glissière", game=True)
+
+        perle = Particule(position=v(20, 50, 0), masse=2.0, name='Perle')
+
+        gravite = Gravity(v(0, -9.81, 0))
+
+        rail = Glissiere(origine=v(50, 50, 0), targets=[perle], direction=v(1, -0.5, 0), k=8000, c=100, name='Rail')
+
+
+        uni.addObjets(gravite, rail, perle)
+
+        
+        uni.simulateRealTime()
+
+    run_glissiere()
 
 if __name__ == "__main__":
     from multiverse import Univers
     from particule import Gravity
-    from centrifuge import Barre2D 
+    from assemblages import Barre2D 
     from math import pi
     
     uni = Univers(name="Test Pendule Barre", game=True, dimensions=(10, 10))
     
     b = Barre2D(mass=2.0, long=4.0, large=0.2, theta=-pi/4, centre=v(5, 5, 0), nom="Pendule")
     
-    pivot = LiaisonPivot(barre=b, position_pivot_barre=-1, position_pivot_univers=v(5, 5, 0))
+    pivot = Pivot(barre=b, position_pivot_barre=-1, position_pivot_univers=v(5, 5, 0))
     
     g = Gravity(v(0, -9.81, 0))
 
-    uni.addObjects(b)
-    uni.addGenerators(g)
+    uni.addObjets(b)
+    uni.addObjets(g)
     
     def simulation_custom(self):
         g.setForce(b)

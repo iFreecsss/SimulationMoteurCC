@@ -1,19 +1,25 @@
-from control_pid import ControlPID_vitesse
+from control_pid import ControlPID_position, ControlPID_vitesse
+from forces_liaisons import *
 from moteur_cc import MoteurCC
 from vecteur3d import Vector3D as v
 from types import MethodType
 import pygame
 from pygame.locals import *
+import particule as p
+import assemblages as c
+
 
 class Univers:
     def __init__(self, name='ici', t0=0, step=0.001, dimensions=(100,100), game=False, gameDimensions=(1024,780), fps=60):
         self.name = name
         self.time = [t0]
-        self.population = []
-        self.moteurs = []
-        self.controleurs = []
-        self.generators = []
-        self.objects = []
+        self.objets = {'particules': [],
+                       'moteurs': [],
+                       'controleurs': [],
+                       'generators': [],
+                       'liaisons': [],
+                       'objets': []}
+
         self.step = step
         
         self.dimensions = dimensions
@@ -30,48 +36,41 @@ class Univers:
     def __repr__(self):
         return str(self)
         
-    def addMotors(self, *motors):
-        for m in motors:
-            self.moteurs.append(m)
-
-    def addControleurs(self, *controleurs):
-        for c in controleurs:
-            self.controleurs.append(c)
-
-    def addParticules(self, *particles):
-        for p in particles:
-            self.population.append(p)
-
-    def addObjects(self, *objects):
-        for o in objects:
-            self.objects.append(o)
-
-    def addGenerators(self, *generators):
-        for g in generators:
-            self.generators.append(g)
+    def addObjets(self, *objets):
+        for o in objets:
+            if isinstance(o, p.Particule):
+                self.objets['particules'].append(o)
+            elif isinstance(o, MoteurCC):
+                self.objets['moteurs'].append(o)
+            elif isinstance(o, (ControlPID_vitesse, ControlPID_position)):
+                self.objets['controleurs'].append(o)
+            elif isinstance(o, Force):
+                self.objets['generators'].append(o)
+            elif isinstance(o, (Gravity, Force, ForceSelect, Viscosity, SpringDamper)):
+                self.objets['liaisons'].append(o)
+            elif isinstance(o, (Glissiere, Pivot)):
+                self.objets['generators'].append(o)
+            elif isinstance(o, (c.Barre2D, c.BrasCentrifuge, c.Pendule)):
+                self.objets['objets'].append(o)
+            else:
+                print('Objet de type inconnu :', o)
 
     def simulateAll(self):
-        for p in self.population:
-            for source in self.generators:
-                source.setForce(p)
-            p.simule(self.step)
-
-        for o in self.objects:
-            for source in self.generators:
-                source.setForce(o)
-            o.simule(self.step)
-
-
         moteurs_controlles = set()
-            
-        for c in self.controleurs:
-            c.simule(self.step)
+
+        for c in self.objets['controleurs']:
             moteurs_controlles.add(c.moteur)
 
-        for m in self.moteurs:
-            if m not in moteurs_controlles:
-                m.simule(self.step)
-        
+        for item, values in self.objets.items():
+            for obj in values:
+                if item == 'moteurs':
+                    if obj in moteurs_controlles:
+                        continue
+                if hasattr(obj, 'setForce'):
+                    obj.setForce()
+                if hasattr(obj, 'simule'):
+                    obj.simule(self.step)
+
         self.time.append(self.time[-1] + self.step)
 
     def simulateFor(self, duration):
@@ -95,10 +94,8 @@ class Univers:
 
         while running:
             
-            # Fond d'écran (Gris clair)
             screen.fill((240, 240, 240))
             
-            # Gestion des événements Pygame
             pygame.event.pump()
             keys = pygame.key.get_pressed()
             events = pygame.event.get()
@@ -114,16 +111,12 @@ class Univers:
             
             self.simulateFor(1 / self.gameFPS)    
 
-            for m in self.moteurs:
-                m.gameDraw(screen, self.scale)
-            for p in self.population:
-                p.gameDraw(screen, self.scale)
-            for o in self.objects:
-                o.gameDraw(screen, self.scale)
-            for g in self.generators:
-                if hasattr(g, 'drawArea'):
-                    g.drawArea(screen, self.scale)
-            
+            for item in self.objets.values():
+                for obj in item:
+                    if hasattr(obj, 'gameDraw'):
+                        obj.gameDraw(screen, self.scale)
+
+
             # get y axis upwards, origin on bottom left : La fenetre pygame a l'axe y vers le bas. On le retourne.
             flip_surface = pygame.transform.flip(screen, False, flip_y=True)
             screen.blit(flip_surface, (0, 0))
@@ -147,11 +140,11 @@ if __name__ == "__main__":
     m2 = MoteurCC(visc=1e-3, name='Moteur BF', position=v(50, 30, 0))
     m2_PID = ControlPID_vitesse(m2, K_P=50.0, K_I=10, K_D=0.1)
 
-    u.addMotors(m1, m2)
-    u.addControleurs(m2_PID)
+    u.addObjets(m1, m2)
+    u.addObjets(m2_PID)
 
     def interaction_clavier(self, events, keys):
-        moteur = self.moteurs[0]
+        moteur = self.objets['moteurs'][0]
 
         if keys[pygame.K_UP]:
             moteur.setVoltage(12.0)
@@ -167,3 +160,10 @@ if __name__ == "__main__":
     
     m2_PID.plot([m1])
     plt.show()
+
+
+
+
+
+
+
