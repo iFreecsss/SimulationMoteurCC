@@ -1,11 +1,10 @@
 import pygame
-import numpy as np
 from math import cos, sin, sqrt
 from vecteur3d import Vector3D as v
 from control_pid import ControlPID_vitesse
 from multiverse import Univers
 from moteur_cc import MoteurCC
-from particule import Particule, Glissiere, SpringDamper, Gravity
+from particule import Particule, Glissiere, SpringDamper, Gravity, Viscosity
 
 class BrasCentrifuge:
     def __init__(self, moteur, glissiere, particule):
@@ -63,9 +62,6 @@ class BrasCentrifuge:
         plt.figure(figsize=(20, 30))
         plt.plot(ys, ds)
 
-
-
-
 if __name__ == "__main__":
     
     def run_centrifuge(target=2.0, moteur=None, masse=None, glissiere=None, springdamper=None, controlleur=None):
@@ -106,5 +102,112 @@ if __name__ == "__main__":
         bras.plot()
         plt.show()
     
-    run_centrifuge()
+    # run_centrifuge()
+
+from torseur import Torseur
+
+class Barre2D:
+    def __init__(self, mass=1.0, long=1.0, theta=0.0, pos=v(0,0,0), fixed=False, color='red', nom='barre'):
+        # Physique
+        self.mass = mass
+        self.long = long
+        self.J = (1/12) * self.mass * self.long**2
         
+        self.G = pos
+        self.theta = theta
+        
+        self.vitesse = v(0,0,0)
+        self.omega = 0.0
+        
+        # initialisation du torseur des actions au point G
+        self.actions_meca = Torseur(P=self.G, R=v(0,0,0), M=v(0,0,0))
+
+        self.fixed = fixed
+        self.color = color
+        self.nom = nom
+
+        self.pos = [self.G]
+        self.rotation = [self.theta]
+        self.ts = [0]
+
+    def getPosition(self):
+        return self.G
+
+    def getSpeed(self):
+        return self.vitesse
+
+    def applyForce(self, Force=v(), Torque=v(),Point=0):
+        if self.fixed:
+            return
+        
+        self.actions_meca.M = self.actions_meca.M + Torque
+        # Vecteur unitaire de la barre
+        u_barre = v(cos(self.theta), sin(self.theta), 0)
+        
+        # Distance depuis le centre G
+        dist = (self.long / 2.0) * Point
+        
+        # P_app = G + dist * u_barre
+        P_app = self.G + (u_barre * dist)
+
+        T_effort = Torseur(P=P_app, R=Force, M=v(0,0,0))
+
+        self.actions_meca.P = self.G
+        self.actions_meca = self.actions_meca + T_effort
+
+
+    def simule(self, step):
+        if self.fixed:
+            self.actions_meca = Torseur(P=self.G, R=v(0,0,0), M=v(0,0,0))
+            return
+
+        # Accélération
+        sum_F = self.actions_meca.R
+        acceleration = sum_F * (1.0 / self.mass)
+        
+        sum_M_z = self.actions_meca.M.z
+        alpha = sum_M_z / self.J
+        
+        # Vitesse
+        self.vitesse = self.vitesse + acceleration * step
+        self.omega = self.omega + alpha * step
+        
+        # Position
+        self.G = self.G + self.vitesse * step
+        self.theta = self.theta + self.omega * step
+
+        # on remet le torseur à zéro pour les pas suivants
+        self.actions_meca = Torseur(P=self.G, R=v(0,0,0), M=v(0,0,0))
+
+        self.pos.append(self.G)
+        self.rotation.append(self.theta)
+        self.ts.append(self.ts[-1] + step)
+
+    def gameDraw(self, screen, scale):
+        
+        u_barre = v(cos(self.theta), sin(self.theta), 0)
+        half = (self.long / 2.0)
+        
+        p1 = self.G - u_barre * half
+        p2 = self.G + u_barre * half
+
+        start = (int(p1.x * scale), int(p1.y * scale))
+        end = (int(p2.x * scale), int(p2.y * scale))
+        
+        c = self.color if not isinstance(self.color, str) else pygame.Color(self.color)
+        pygame.draw.line(screen, c, start, end, 5)
+        
+        cg = (int(self.G.x * scale), int(self.G.y * scale))
+        pygame.draw.circle(screen, (0,0,0), cg, 3)
+
+
+
+
+if __name__ == "__main__":
+    uni = Univers(dimensions=(10, 10))
+    b = Barre2D(pos=v(5, 5, 0))
+    uni.addObjects(b)
+    uni.addGenerators(Gravity(g=v(0, -9.81, 0)), Viscosity(15, centre_zone=v(5, 2, 0)))
+    uni.simulateRealTime()
+
+

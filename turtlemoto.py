@@ -19,9 +19,10 @@ class TurtleBot:
 
         # un peu comme une moto ou un 2 roues en général dans lesquels la roue arrière est motrice et la roue avant est directrice, 
         # on divise les tâches en 2 en utilisant un moteur qui controle la direction et un autre la propulsion
-        self.moteur_av = MoteurCC(name="Direction") 
-        self.moteur_ar = MoteurCC(name="Propulsion")
-        
+        self.moteur_av = MoteurCC(name="Direction", visc=1e-2) 
+        self.moteur_ar = MoteurCC(name="Propulsion", visc=1e-2)
+
+        # paramètres de la roue
         self.rayon_roue = 0.035
         self.facteur_rotation = 0.1
 
@@ -38,7 +39,11 @@ class TurtleBot:
         omega_propulsion = self.moteur_ar.getSpeed()
 
         # on calcule la vitesse de rotation et de translation de la motobot
+        # dans la vraie vie, le déplacement de la moto dépend de la vitesse de rotation du moteur 
+        # mais aussi du rayon de sa roue. Permet de passer de rad/s à m/s.
         v_lineaire = omega_propulsion * self.rayon_roue
+        # pour la rotation comme le modèle est simplifié, on utilise juste un facteur pour ralentir 
+        # la rotation du moteur pour que sa vitesse soit crédible dans la vraie vie.
         v_rotation = omega_direction * self.facteur_rotation
 
         # on intègre ensuite la position et on met à jour
@@ -63,7 +68,7 @@ class TurtleBot:
 
 
 if __name__ == "__main__":
-    uni = Univers(name="Arena Tricycle", game=True)
+    uni = Univers(name="Moto GP", game=True, dimensions=(5,5))
     
     rob = TurtleBot(position=v(2.5, 2.5, 0), name="MotoBot")
     

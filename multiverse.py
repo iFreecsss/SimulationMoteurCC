@@ -11,8 +11,9 @@ class Univers:
         self.time = [t0]
         self.population = []
         self.moteurs = []
-        self.controlleurs = []
+        self.controleurs = []
         self.generators = []
+        self.objects = []
         self.step = step
         
         self.dimensions = dimensions
@@ -33,13 +34,17 @@ class Univers:
         for m in motors:
             self.moteurs.append(m)
 
-    def addControlleurs(self, *controlleurs):
-        for c in controlleurs:
-            self.controlleurs.append(c)
+    def addControleurs(self, *controleurs):
+        for c in controleurs:
+            self.controleurs.append(c)
 
     def addParticules(self, *particles):
         for p in particles:
             self.population.append(p)
+
+    def addObjects(self, *objects):
+        for o in objects:
+            self.objects.append(o)
 
     def addGenerators(self, *generators):
         for g in generators:
@@ -51,9 +56,13 @@ class Univers:
                 source.setForce(p)
             p.simule(self.step)
 
+        for o in self.objects:
+            o.simule(self.step)
+
+
         moteurs_controlles = set()
             
-        for c in self.controlleurs:
+        for c in self.controleurs:
             c.simule(self.step)
             moteurs_controlles.add(c.moteur)
 
@@ -107,6 +116,8 @@ class Univers:
                 m.gameDraw(screen, self.scale)
             for p in self.population:
                 p.gameDraw(screen, self.scale)
+            for o in self.objects:
+                o.gameDraw(screen, self.scale)
             for g in self.generators:
                 if hasattr(g, 'drawArea'):
                     g.drawArea(screen, self.scale)
@@ -135,7 +146,7 @@ if __name__ == "__main__":
     m2_PID = ControlPID_vitesse(m2, K_P=50.0, K_I=10, K_D=0.1)
 
     u.addMotors(m1, m2)
-    u.addControlleurs(m2_PID)
+    u.addControleurs(m2_PID)
 
     def interaction_clavier(self, events, keys):
         moteur = self.moteurs[0]
