@@ -1,7 +1,6 @@
 import pygame
 from pygame.locals import *
 from vecteur3d import Vector3D as v
-from forces_liaisons import *
 from torseur import Torseur
 
 class Particule:
@@ -187,9 +186,11 @@ class Barre2D:
         pygame.draw.circle(screen, (0,0,0), cg, 3)
 
 if __name__ == "__main__":
+    from multiverse import Univers
+    from forces_liaisons import *
     uni = Univers(dimensions=(10, 10))
     b = Barre2D(centre=v(5, 5, 0))
-    uni.addObjects(b)
-    uni.addGenerators(Gravity(g=v(0, -9.81, 0)), Viscosity(15, centre_zone=v(5, 2, 0)))
+    uni.addObjets(b)
+    uni.addObjets(Gravity(g=v(0, -9.81, 0)), Viscosity(15, centre_zone=v(5, 2, 0)))
     uni.simulateRealTime()
 

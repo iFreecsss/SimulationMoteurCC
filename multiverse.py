@@ -6,7 +6,7 @@ from types import MethodType
 import pygame
 from pygame.locals import *
 import particule as p
-import assemblages as c
+from assemblages import *
 
 
 class Univers:
@@ -46,32 +46,38 @@ class Univers:
                 self.objets['controleurs'].append(o)
             elif isinstance(o, Force):
                 self.objets['generators'].append(o)
-            elif isinstance(o, (Gravity, Force, ForceSelect, Viscosity, SpringDamper)):
+            elif isinstance(o, (Gravity, Force, ForceSelect, Viscosity, SpringDamper, Fil)):
                 self.objets['liaisons'].append(o)
             elif isinstance(o, (Glissiere, Pivot)):
                 self.objets['generators'].append(o)
-            elif isinstance(o, (c.Barre2D, c.BrasCentrifuge, c.Pendule)):
+            elif isinstance(o, (Barre2D, BrasCentrifuge, Pendule)):
                 self.objets['objets'].append(o)
             else:
                 print('Objet de type inconnu :', o)
 
     def simulateAll(self):
-        moteurs_controlles = set()
+        # on sépare les objets en fonction de leur role 
+        receveurs = self.objets['particules'] + self.objets['objets'] + self.objets['moteurs']
+        sources = self.objets['generators'] + self.objets['liaisons']
+
+        for source in sources:
+            for rec in receveurs:
+                source.setForce(rec)
+
+        moteurs_controles = set()
 
         for c in self.objets['controleurs']:
-            moteurs_controlles.add(c.moteur)
+            c.simule(self.step)
+            moteurs_controles.add(c.moteur)
 
-        for item, values in self.objets.items():
-            for obj in values:
-                if item == 'moteurs':
-                    if obj in moteurs_controlles:
-                        continue
-                if hasattr(obj, 'setForce'):
-                    obj.setForce()
-                if hasattr(obj, 'simule'):
-                    obj.simule(self.step)
+        for rec in receveurs:
+            if rec in moteurs_controles:
+                continue
+            if hasattr(rec, 'simule'):
+                rec.simule(self.step)
 
         self.time.append(self.time[-1] + self.step)
+
 
     def simulateFor(self, duration):
         while duration > 0:
