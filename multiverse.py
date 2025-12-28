@@ -1,11 +1,14 @@
 from control_pid import ControlPID_position, ControlPID_vitesse
-from forces_liaisons import *
 from moteur_cc import MoteurCC
+
 from vecteur3d import Vector3D as v
+
 from types import MethodType
 import pygame
 from pygame.locals import *
-import particule as p
+
+from particule import *
+from forces_liaisons import *
 from assemblages import *
 
 
@@ -38,7 +41,7 @@ class Univers:
         
     def addObjets(self, *objets):
         for o in objets:
-            if isinstance(o, p.Particule):
+            if isinstance(o, Particule):
                 self.objets['particules'].append(o)
             elif isinstance(o, MoteurCC):
                 self.objets['moteurs'].append(o)
@@ -48,9 +51,9 @@ class Univers:
                 self.objets['generators'].append(o)
             elif isinstance(o, (Gravity, Force, ForceSelect, Viscosity, SpringDamper, Fil)):
                 self.objets['liaisons'].append(o)
-            elif isinstance(o, (Glissiere, Pivot)):
+            elif isinstance(o, (Glissiere, Pivot, BrasCentrifuge)):
                 self.objets['generators'].append(o)
-            elif isinstance(o, (Barre2D, BrasCentrifuge, Pendule)):
+            elif isinstance(o, (Barre2D, Pendule, TurtleBot)):
                 self.objets['objets'].append(o)
             else:
                 print('Objet de type inconnu :', o)

@@ -1,10 +1,14 @@
 from math import cos, sin
+
+from torseur import *
 from vecteur3d import Vector3D as v
+
 from particule import *
 from forces_liaisons import *
+
 from control_pid import *
 from moteur_cc import *
-from torseur import *
+
 import pygame
 from pygame.locals import *
 
@@ -66,7 +70,9 @@ class BrasCentrifuge:
         plt.plot(ys, ds)
 
 if __name__ == "__main__":
-    
+
+    from multiverse import *
+
     def run_centrifuge(target=2.0, moteur=None, masse=None, glissiere=None, springdamper=None, controlleur=None):
         import matplotlib.pyplot as plt
 
@@ -88,20 +94,20 @@ if __name__ == "__main__":
 
         # ajout d'un ressort en mettant une seconde particule fixe au centre du moteur
         if springdamper is None:
-            springdamper = SpringDamper(L0=5, k=5, c=5, P0=masse, P2=Particule(position=controlleur.moteur.position, name="Fixe", fixed=True), active=True)
+            springdamper = SpringDamper(L0=5, k=5, c=5, P0=masse, P2=Particule(position=controlleur.moteur.position, name="Fixe", fixed=True))
 
         bras = BrasCentrifuge(controlleur, glissiere, masse)
 
-        uni.addMotors(moteur)
-        uni.addParticules(masse)
-        uni.addGenerators(bras, springdamper)
-        uni.addControlleurs(controlleur)
+        uni.addObjets(moteur, masse, bras, springdamper, controlleur)
 
         controlleur.setTarget(target)
         uni.simulateRealTime()
+
         controlleur.plot()
         plt.show()
+
         print(controlleur.getTimeResponse())
+
         bras.plot()
         plt.show()
     
@@ -137,27 +143,31 @@ class Pendule:
         pass
 
 if __name__ == "__main__":
-    from types import MethodType
-    import numpy as np
 
-    uni = Univers(name="Pendule Simple", game=True, dimensions=(50, 50))
-    p = Pendule(attache_pos=v(25, 40, 0), longueur=10.0, angle_init=np.pi/4)
-    uni.addParticules(p.ancre, p.masse)
+    def run_pendule():
+        from types import MethodType
+        import numpy as np
 
-    gravite = Gravity(v(0, -9.81, 0))
+        uni = Univers(name="Pendule Simple", game=True, dimensions=(50, 50))
+        p = Pendule(attache_pos=v(25, 40, 0), longueur=10.0, angle_init=np.pi/4)
+        uni.addObjets(p.ancre, p.masse)
 
-    def gameInteraction(self, events, keys):
-        vitesse_deplacement = 0.1
-        if keys[pygame.K_LEFT]:p.ancre.position[-1].x -= vitesse_deplacement
-        if keys[pygame.K_RIGHT]:p.ancre.position[-1].x += vitesse_deplacement
-        if keys[pygame.K_UP]:p.ancre.position[-1].y += vitesse_deplacement
-        if keys[pygame.K_DOWN]:p.ancre.position[-1].y -= vitesse_deplacement
+        gravite = Gravity(v(0, -9.81, 0))
+
+        def gameInteraction(self, events, keys):
+            vitesse_deplacement = 0.1
+            if keys[pygame.K_LEFT]:p.ancre.position[-1].x -= vitesse_deplacement
+            if keys[pygame.K_RIGHT]:p.ancre.position[-1].x += vitesse_deplacement
+            if keys[pygame.K_UP]:p.ancre.position[-1].y += vitesse_deplacement
+            if keys[pygame.K_DOWN]:p.ancre.position[-1].y -= vitesse_deplacement
 
 
-    uni.addGenerators(gravite, p.fil)
-    uni.gameInteraction = MethodType(gameInteraction, uni)
+        uni.addObjets(gravite, p.fil)
+        uni.gameInteraction = MethodType(gameInteraction, uni)
 
-    uni.simulateRealTime()
+        uni.simulateRealTime()
+
+    # run_pendule()
 
 class TurtleBot:
     def __init__(self, position=v(0,0,0), orientation=0, name='TurtleBot', color=None):
@@ -222,34 +232,42 @@ class TurtleBot:
         pygame.draw.line(screen, (0, 0, 0), (X, Y), (end_x, end_y), 3)
 
 if __name__ == "__main__":
-    uni = Univers(name="Moto GP", game=True, dimensions=(5,5))
-    
-    rob = TurtleBot(position=v(2.5, 2.5, 0), name="MotoBot")
-    
-    uni.addMotors(rob)
 
-    def control_tension(self, events, keys):
-        import pygame
+    from assemblages import *
 
-        # on définit les touches qui nous permettent de contrôler le robot en jouant sur sa tension uniquement.
-        U_propulsion = 12.0
-        U_direction = 12.0 
+    def run_turtlemotobot():
+        from types import MethodType
+
+        uni = Univers(name="Moto GP", game=True, dimensions=(5,5))
         
-        val_propulsion = 0
-        val_direction = 0
+        rob = TurtleBot(position=v(2.5, 2.5, 0), name="MotoBot")
         
-        if keys[pygame.K_UP]:
-            val_propulsion = U_propulsion
-        elif keys[pygame.K_DOWN]:
-            val_propulsion = -U_propulsion
-            
-        if keys[pygame.K_LEFT]:
-            val_direction = U_direction
-        elif keys[pygame.K_RIGHT]:
-            val_direction = -U_direction
-            
-        rob.setVoltage(val_direction, val_propulsion)
+        uni.addObjets(rob)
 
-    uni.gameInteraction = MethodType(control_tension, uni)
+        def control_tension(self, events, keys):
+            import pygame
 
-    uni.simulateRealTime()
+            # on définit les touches qui nous permettent de contrôler le robot en jouant sur sa tension uniquement.
+            U_propulsion = 12.0
+            U_direction = 12.0 
+            
+            val_propulsion = 0
+            val_direction = 0
+            
+            if keys[pygame.K_UP]:
+                val_propulsion = U_propulsion
+            elif keys[pygame.K_DOWN]:
+                val_propulsion = -U_propulsion
+                
+            if keys[pygame.K_LEFT]:
+                val_direction = U_direction
+            elif keys[pygame.K_RIGHT]:
+                val_direction = -U_direction
+                
+            rob.setVoltage(val_direction, val_propulsion)
+
+        uni.gameInteraction = MethodType(control_tension, uni)
+
+        uni.simulateRealTime()
+
+    run_turtlemotobot()

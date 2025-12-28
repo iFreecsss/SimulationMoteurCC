@@ -1,7 +1,9 @@
 import pygame
 from pygame.locals import *
+
 from vecteur3d import Vector3D as v
 from torseur import Torseur
+
 from math import cos, sin
 
 class Force:
@@ -235,7 +237,11 @@ class Glissiere:
 
 if __name__ == "__main__":
     from multiverse import Univers
-    from particule import Particule
+    
+    from forces_liaisons import *
+    from particule import *
+
+    from math import pi, cos, sin
 
     def run_glissiere():
 
@@ -253,35 +259,32 @@ if __name__ == "__main__":
         
         uni.simulateRealTime()
 
+    def run_barre_pendule():
+        uni = Univers(name="Test Pendule Barre", game=True, dimensions=(10, 10))
+        
+        b = Barre2D(mass=2.0, long=4.0, large=0.2, theta=-pi/4, centre=v(5, 5, 0), nom="Pendule")
+        
+        pivot = Pivot(barre=b, position_pivot_barre=-1, position_pivot_univers=v(5, 5, 0))
+        
+        g = Gravity(v(0, -9.81, 0))
+
+        uni.addObjets(b)
+        uni.addObjets(g)
+        
+        def simulation_custom(self):
+            g.setForce(b)
+            
+            pivot.simule(self.step)
+            
+            self.time.append(self.time[-1] + self.step)
+
+        from types import MethodType
+        uni.simulateAll = MethodType(simulation_custom, uni)
+        
+        def draw_pivot(screen, scale):
+            pivot.gameDraw(screen, scale)
+        uni.simulateRealTime()
+    
+
     run_glissiere()
-
-if __name__ == "__main__":
-    from multiverse import Univers
-    from particule import Gravity
-    from assemblages import Barre2D 
-    from math import pi
-    
-    uni = Univers(name="Test Pendule Barre", game=True, dimensions=(10, 10))
-    
-    b = Barre2D(mass=2.0, long=4.0, large=0.2, theta=-pi/4, centre=v(5, 5, 0), nom="Pendule")
-    
-    pivot = Pivot(barre=b, position_pivot_barre=-1, position_pivot_univers=v(5, 5, 0))
-    
-    g = Gravity(v(0, -9.81, 0))
-
-    uni.addObjets(b)
-    uni.addObjets(g)
-    
-    def simulation_custom(self):
-        g.setForce(b)
-        
-        pivot.simule(self.step)
-        
-        self.time.append(self.time[-1] + self.step)
-
-    from types import MethodType
-    uni.simulateAll = MethodType(simulation_custom, uni)
-    
-    def draw_pivot(screen, scale):
-        pivot.gameDraw(screen, scale)
-    uni.simulateRealTime()
+    run_barre_pendule()
