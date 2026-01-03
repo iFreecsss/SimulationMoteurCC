@@ -116,7 +116,9 @@ class SpringDamper:
 class Fil(SpringDamper):
     def __init__(self, P0, P2, name='fil', active=True):
         L0 = (P2.getPosition() - P0.getPosition()).mod()
-        super().__init__(L0=L0, k=5000, c=100, P0=P0, P2=P2, name=name, active=active)
+        self.k = 1e4
+        self.c = 1e2
+        super().__init__(L0=L0, k=self.k, c=self.c, P0=P0, P2=P2, name=name, active=active)
 
 class Pivot:
     def __init__(self, barre, position_pivot_barre=0, position_pivot_univers=v()):
@@ -133,8 +135,8 @@ class Pivot:
         self.J_pivot = self.barre.J + self.barre.mass * (self.dist_G_pivot**2)
 
     def simule(self, step):
-        # A. On récupère le torseur des forces appliquées sur la barre (Gravité, etc.)
-        # Ce torseur est actuellement exprimé au point G (défini dans Barre2D)
+        
+        # récupération du torseur des forces de la barre actuellement exprimé au point G de la barre
         T_action = self.barre.actions_meca
         
         # transport du torseur au point de pivot avec BABAR
@@ -144,10 +146,6 @@ class Pivot:
         
         self.barre.omega += alpha * step
         self.barre.theta += self.barre.omega * step
-        
-        # E. Contrainte Cinématique : On force la position de G
-        # G tourne autour du Pivot.
-        # Le vecteur Pivot -> G est de longueur dist_G_pivot et d'angle (theta + pi si pivot à droite)
         
         # vecteur unitaire de la barre
         u = v(cos(self.barre.theta), sin(self.barre.theta), 0)
@@ -172,6 +170,16 @@ class Pivot:
         px = int(self.pos_univers.x * scale)
         py = int(self.pos_univers.y * scale)
         pygame.draw.circle(screen, (0, 0, 0), (px, py), 5)
+
+class PivotMobile(Pivot):
+    def __init__(self, barre, particule_support, position_pivot_barre=0):
+        super().__init__(barre, position_pivot_barre, particule_support.getPosition())
+        self.support = particule_support
+
+    def simule(self, step):
+        self.pos_univers = self.support.getPosition()
+        super().simule(step)
+
 
 class Glissiere:
     def __init__(self, origine, direction, targets=[], k=1e6, c=1e2, longueur_visuelle=1000, name='glissiere', active=True):
@@ -270,21 +278,11 @@ if __name__ == "__main__":
 
         uni.addObjets(b)
         uni.addObjets(g)
+        uni.addObjets(pivot)
         
-        def simulation_custom(self):
-            g.setForce(b)
-            
-            pivot.simule(self.step)
-            
-            self.time.append(self.time[-1] + self.step)
-
-        from types import MethodType
-        uni.simulateAll = MethodType(simulation_custom, uni)
-        
-        def draw_pivot(screen, scale):
-            pivot.gameDraw(screen, scale)
         uni.simulateRealTime()
     
 
     run_glissiere()
     run_barre_pendule()
+
