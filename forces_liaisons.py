@@ -29,7 +29,7 @@ class ForceSelect(Force):
 
 class Viscosity:
 
-    def __init__(self,coefficient,centre_zone = v(),rayon_zone=1, name='viscosity',active=True):
+    def __init__(self,coefficient,centre_zone=v(50,50,0),rayon_zone=100, name='viscosity',active=True):
         self.coefficient = coefficient
         self.name = name
         self.active = active
@@ -181,6 +181,7 @@ class PivotMobile(Pivot):
         super().simule(step)
 
 
+
 class Glissiere:
     def __init__(self, origine, direction, targets=[], k=1e6, c=1e2, longueur_visuelle=1000, name='glissiere', active=True):
 
@@ -254,26 +255,19 @@ if __name__ == "__main__":
     def run_glissiere():
 
         uni = Univers(name="Glissière", game=True)
-
         perle = Particule(position=v(20, 50, 0), masse=2.0, name='Perle')
-
         gravite = Gravity(v(0, -9.81, 0))
-
         rail = Glissiere(origine=v(50, 50, 0), targets=[perle], direction=v(1, -0.5, 0), k=8000, c=100, name='Rail')
-
 
         uni.addObjets(gravite, rail, perle)
 
-        
         uni.simulateRealTime()
 
     def run_barre_pendule():
+
         uni = Univers(name="Test Pendule Barre", game=True, dimensions=(10, 10))
-        
         b = Barre2D(mass=2.0, long=4.0, large=0.2, theta=-pi/4, centre=v(5, 5, 0), nom="Pendule")
-        
         pivot = Pivot(barre=b, position_pivot_barre=-1, position_pivot_univers=v(5, 5, 0))
-        
         g = Gravity(v(0, -9.81, 0))
 
         uni.addObjets(b)
@@ -281,8 +275,33 @@ if __name__ == "__main__":
         uni.addObjets(pivot)
         
         uni.simulateRealTime()
-    
 
     run_glissiere()
     run_barre_pendule()
 
+    def run_glissiere_control():
+        uni = Univers(name="Glissière avec Contrôle", game=True)
+        perle = Particule(position=v(20, 50, 0), masse=2.0, name='Perle')
+        gravite = Gravity(v(0, -9.81, 0))
+        visc = Viscosity(coefficient=.7, centre_zone=v(50,50,0), rayon_zone=100)
+        rail = Glissiere(origine=v(50, 50, 0), targets=[perle], direction=v(0, 0, 0), k=8000, c=100, name='Rail')
+
+        uni.addObjets(gravite, rail, perle, visc)
+
+        from types import MethodType
+
+        def myInteraction(self, events, keys):
+            if keys[K_UP]:
+                perle.applyForce(v(0, -50, 0))
+            if keys[K_DOWN]:
+                perle.applyForce(v(0, 50, 0))
+            if keys[K_LEFT]:
+                perle.applyForce(v(-50, 0, 0))
+            if keys[K_RIGHT]:
+                perle.applyForce(v(50, 0, 0))
+
+        uni.gameInteraction = MethodType(myInteraction, uni)
+
+        uni.simulateRealTime()
+
+    run_glissiere_control()
