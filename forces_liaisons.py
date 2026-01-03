@@ -1,3 +1,4 @@
+from types import MethodType
 import pygame
 from pygame.locals import *
 
@@ -180,8 +181,6 @@ class PivotMobile(Pivot):
         self.pos_univers = self.support.getPosition()
         super().simule(step)
 
-
-
 class Glissiere:
     def __init__(self, origine, direction, targets=[], k=1e6, c=1e2, longueur_visuelle=1000, name='glissiere', active=True):
 
@@ -251,6 +250,7 @@ if __name__ == "__main__":
     from particule import *
 
     from math import pi, cos, sin
+    import numpy as np
 
     def run_glissiere():
 
@@ -284,7 +284,7 @@ if __name__ == "__main__":
         perle = Particule(position=v(20, 50, 0), masse=2.0, name='Perle')
         gravite = Gravity(v(0, -9.81, 0))
         visc = Viscosity(coefficient=.7, centre_zone=v(50,50,0), rayon_zone=100)
-        rail = Glissiere(origine=v(50, 50, 0), targets=[perle], direction=v(0, 0, 0), k=8000, c=100, name='Rail')
+        rail = Glissiere(origine=v(50, 50, 0), targets=[perle], direction=v(1, 0, 0), k=8000, c=100, name='Rail')
 
         uni.addObjets(gravite, rail, perle, visc)
 
@@ -305,3 +305,37 @@ if __name__ == "__main__":
         uni.simulateRealTime()
 
     run_glissiere_control()
+
+    def run_pendule_inverse_manuel():
+        
+        uni = Univers(name="Pendule Inversé - Test Manuel", game=True)
+        chariot = Particule(position=v(50, 50, 0), masse=5.0, name='Chariot', color=(0, 0, 255))
+        rail = Glissiere(origine=v(0, 50, 0), direction=v(1, 0, 0), targets=[chariot], k=1e6, c=500)
+
+
+        longueur_barre = 10.0
+        angle_init = np.pi / 2
+        offset_G = v(cos(angle_init), sin(angle_init), 0) * (longueur_barre / 2)
+        pos_G = chariot.getPosition() + offset_G
+
+        barre = Barre2D(mass=1.0, long=longueur_barre, large=1.0, theta=angle_init, centre=pos_G, color=(200, 50, 50))
+        pivot = PivotMobile(barre=barre, particule_support=chariot, position_pivot_barre=-1)
+
+        gravite = Gravity(v(0, -9.81, 0))
+        visc = Viscosity(coefficient=5.0, centre_zone=v(50,50,0), rayon_zone=200)
+
+        uni.addObjets(gravite, rail, visc, chariot, barre, pivot)
+
+        def interaction_clavier(self, events, keys):
+            force_mag = 1000.0 
+            
+            if keys[K_LEFT]:
+                chariot.applyForce(v(-force_mag, 0, 0))
+            if keys[K_RIGHT]:
+                chariot.applyForce(v(force_mag, 0, 0))
+
+        uni.gameInteraction = MethodType(interaction_clavier, uni)
+        
+        uni.simulateRealTime()
+
+    run_pendule_inverse_manuel()
