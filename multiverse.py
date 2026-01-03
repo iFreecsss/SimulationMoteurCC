@@ -16,13 +16,12 @@ class Univers:
     def __init__(self, name='ici', t0=0, step=0.001, dimensions=(100,100), game=False, gameDimensions=(1024,780), fps=60):
         self.name = name
         self.time = [t0]
-        self.objets = {'particules': [],
-                       'moteurs': [],
-                       'controleurs': [],
-                       'generators': [],
-                       'liaisons': [],
-                       'constraints': [],
-                       'objets': []}
+
+        self.forces = []
+        self.contraintes = []
+        self.acteurs = []
+        self.drawables = []
+        self.all_objects = []
 
         self.step = step
         
@@ -39,61 +38,49 @@ class Univers:
         
     def __repr__(self):
         return str(self)
-        
+
     def addObjets(self, *objets):
+
         for o in objets:
-            if isinstance(o, Particule):
-                self.objets['particules'].append(o)
-            elif isinstance(o, MoteurCC):
-                self.objets['moteurs'].append(o)
-            elif isinstance(o, (ControlPID_vitesse, ControlPID_position)):
-                self.objets['controleurs'].append(o)
-            elif isinstance(o, Force):
-                self.objets['generators'].append(o)
-            elif isinstance(o, (Pivot, PivotMobile)): 
-                self.objets['constraints'].append(o)
-            elif isinstance(o, (Gravity, Force, ForceSelect, Viscosity, SpringDamper, Fil, Glissiere)):
-                self.objets['liaisons'].append(o)
-            elif isinstance(o, BrasCentrifuge):
-                self.objets['generators'].append(o)
-            elif isinstance(o, (Barre2D, Pendule, TurtleBot, PenduleBarre2D)):
-                self.objets['objets'].append(o)
-            else:
-                if hasattr(o, 'gameDraw'):
-                     self.objets['objets'].append(o)
-                print(f"Note : Objet '{type(o).__name__}' ajouté de manière générique.")
+            self.all_objects.append(o)
+            # est ce que c'est une force ?
+            if hasattr(o, 'setForce'):
+                self.forces.append(o)
+
+            # est ce que c'est une contrainte cinématique ? (bon ici on accepte que les pivots)
+            # peut etre juste ajouter un flag is_constraint a pivot ?
+            is_constraint = hasattr(o, 'barre') and hasattr(o, 'pos_univers') 
+            if is_constraint: 
+                self.contraintes.append(o)
+            
+            # elif ici car les constraints ont aussi un simule 
+            elif hasattr(o, 'simule'):
+                self.acteurs.append(o)
+
+            # on peut le dessiner ?
+            if hasattr(o, 'gameDraw'):
+                self.drawables.append(o)
 
     def simulateAll(self):
-        # on sépare les objets en fonction de leur role 
-        receveurs = self.objets['particules'] + self.objets['objets'] + self.objets['moteurs']
-        sources = self.objets['generators'] + self.objets['liaisons']
+        
+        for force in self.forces:
+            for acteur in self.acteurs:
+                if hasattr(acteur, 'applyForce') or hasattr(acteur, 'applyEffort'):
+                    force.setForce(acteur)
 
-        for source in sources:
-            for rec in receveurs:
-                if hasattr(source, 'setForce'):
-                    source.setForce(rec)
+        objets_pilotes = set()
+        
+        for contrainte in self.contraintes:
+            contrainte.simule(self.step)
+            
+            if hasattr(contrainte, 'barre'):
+                objets_pilotes.add(contrainte.barre)
 
-        moteurs_controles = set()
-
-        for c in self.objets['controleurs']:
-            c.simule(self.step)
-            moteurs_controles.add(c.moteur)
-
-        objets_contraints = set()
-
-        for constraint in self.objets['constraints']:
-            if hasattr(constraint, 'simule'):
-                constraint.simule(self.step)
-
-        for rec in receveurs:
-            if rec in moteurs_controles:
-                continue
-
-            if rec in objets_contraints:
+        for acteur in self.acteurs:
+            if acteur in objets_pilotes:
                 continue
             
-            if hasattr(rec, 'simule'):
-                rec.simule(self.step)
+            acteur.simule(self.step)
 
         self.time.append(self.time[-1] + self.step)
 
@@ -136,11 +123,8 @@ class Univers:
             
             self.simulateFor(1 / self.gameFPS)    
 
-            for item in self.objets.values():
-                for obj in item:
-                    if hasattr(obj, 'gameDraw'):
-                        obj.gameDraw(screen, self.scale)
-
+            for obj in self.drawables:
+                obj.gameDraw(screen, self.scale)
 
             # get y axis upwards, origin on bottom left : La fenetre pygame a l'axe y vers le bas. On le retourne.
             flip_surface = pygame.transform.flip(screen, False, flip_y=True)
@@ -169,7 +153,7 @@ if __name__ == "__main__":
     u.addObjets(m2_PID)
 
     def interaction_clavier(self, events, keys):
-        moteur = self.objets['moteurs'][0]
+        moteur = self.acteurs[0]
 
         if keys[pygame.K_UP]:
             moteur.setVoltage(12.0)
