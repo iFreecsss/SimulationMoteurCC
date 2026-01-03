@@ -1,5 +1,4 @@
 from math import cos, sin, atan2
-import math
 
 from torseur import *
 from vecteur3d import Vector3D as v
@@ -156,7 +155,6 @@ class Pendule:
 
     def plot(self):
         pass
-
 
 if __name__ == "__main__":
     from assemblages import *
@@ -331,3 +329,149 @@ if __name__ == "__main__":
         uni.simulateRealTime()
 
     # run_turtlemotobot()
+
+class PenduleInverse:
+    def __init__(self, pos_chariot=v(50, 50, 0), longueur_barre=10.0, largeur_barre=1.0, angle_init=0.0):
+        self.longueur_barre = longueur_barre
+        self.largeur_barre = largeur_barre
+        self.angle = angle_init
+
+        self.pos_chariot = pos_chariot
+        self.chariot = Particule(position=pos_chariot, masse=5.0, name='Chariot', color=(0, 0, 255))
+
+        G_pos = v(cos(self.angle), sin(self.angle), 0) * (self.longueur_barre / 2)
+        G = self.chariot.getPosition() + G_pos
+
+        self.pos_glissiere = self.pos_chariot
+
+        self.barre = Barre2D(mass=1.0, long=self.longueur_barre, large=self.largeur_barre, theta=self.angle, centre=G, color=(200, 50, 50))
+        self.pivot = PivotMobile(barre=self.barre, particule_support=self.chariot, position_pivot_barre=-1)
+        self.rail = Glissiere(origine=self.pos_glissiere, direction=v(1, 0, 0), targets=[self.chariot], k=1e6, c=500)
+
+        self.g = Gravity(v(0, -9.81, 0))
+        self.coef_visc = 1.0
+        self.visc = Viscosity(coefficient=self.coef_visc, centre_zone=pos_chariot, rayon_zone=200)
+
+    def simule(self, step):
+        
+        self.g.setForce(self.chariot)
+        self.g.setForce(self.barre)
+        self.rail.setForce(self.chariot)
+        self.visc.setForce(self.chariot)
+        # self.visc.setForce(self.barre)
+
+        self.chariot.simule(step)
+
+        # accélération qu'on vient de donner au chariot (que ce soit avec commandes ou controleur)
+        accel_chariot = self.chariot.acceleration[-1]
+
+        # On transmet cette accélération à la barre c'est grâce à ça que la barre peut retourner en position pi/2
+        # F_inertie = -m_barre * a_chariot
+        force_inertie = accel_chariot * (-self.barre.mass)
+        self.barre.applyEffort(Force=force_inertie, Point=0)
+
+
+        self.pivot.simule(step)
+
+    def gameDraw(self, screen, scale):
+
+        self.rail.gameDraw(screen, scale)
+        self.chariot.gameDraw(screen, scale)
+        self.barre.gameDraw(screen, scale)
+        self.pivot.gameDraw(screen, scale)
+
+    def get_state(self):
+        return {
+            'x': self.chariot.getPosition().x,
+            'v': self.chariot.getSpeed().x,
+            'theta': self.barre.theta - 1.57079632679, # pi/2
+            'omega': self.barre.omega
+        }
+
+    # les trois méthodes suivantes sont juste pour que le PID puisse accéder aux informations de l'état
+    # je pourrais créer une autre classe pour gérer cela mais comme à terme le but est de controler avec
+    # un moteurCC à la base, je préfère garder cela ici
+
+    def getPosition(self):
+        return self.barre.theta
+
+    def getSpeed(self):
+        return self.barre.omega
+
+    def setVoltage(self, commande):
+        self.chariot.applyForce(v(commande, 0, 0))
+        
+if __name__ == "__main__":
+    from multiverse import Univers, v
+    from pygame.locals import *
+    from types import MethodType
+    import numpy as np
+
+    def run_pendule_class():
+        
+        uni = Univers(name="Pendule Inversé - Classe", game=True, dimensions=(50, 50))
+
+        p = PenduleInverse(pos_chariot=v(25, 25, 0), angle_init=np.pi/2 + 0.05)
+        p.barre.mass = 0.1
+        uni.addObjets(p)
+
+        def interaction_clavier(self, events, keys):
+            force_mag = 10000.0
+            
+            if keys[K_LEFT]:
+                p.chariot.applyForce(v(-force_mag, 0, 0))
+            if keys[K_RIGHT]:
+                p.chariot.applyForce(v(force_mag, 0, 0))
+
+        uni.gameInteraction = MethodType(interaction_clavier, uni)
+        
+        uni.simulateRealTime()
+
+    run_pendule_class()
+
+if __name__ == "__main__":
+    from multiverse import Univers, v
+    from control_pid import ControlPID_position
+    from assemblages import PenduleInverse 
+    import numpy as np
+
+    def run_stabilisation_pid_standard():
+        uni = Univers(name="Pendule Inversé - PID Standard", game=True, dimensions=(10, 10))
+    
+        p = PenduleInverse(pos_chariot=v(5, 2, 0), angle_init=np.pi/2, longueur_barre=1.0, largeur_barre=0.1)
+        p.barre.mass = 1.0
+        # on veut un K_P élevé de sorte que le système réagisse vite mais aussi un K_D assez important pour amortir la rechute du pendule
+        # et contrôler les oscillations
+        pid = ControlPID_position(moteur=p, K_P=2000, K_I=0, K_D=500)
+        
+        pid.setTarget(np.pi/2+0.01)
+
+        uni.addObjets(p, pid)
+        uni.force_pichenette = 10000.0
+
+        def interaction_clavier(self, events, keys):
+            
+            for event in events:
+                if event.type == pygame.KEYDOWN:
+                    
+                    if event.key == pygame.K_UP:
+                        self.force_pichenette += 1000.0
+                        print(f"Puissance : {self.force_pichenette} N")
+                        
+                    if event.key == pygame.K_DOWN:
+                        self.force_pichenette -= 1000.0
+                        if self.force_pichenette < 0: self.force_pichenette = 0
+                        print(f"Puissance : {self.force_pichenette} N")
+
+                    if event.key == pygame.K_LEFT:
+                        p.chariot.applyForce(v(-self.force_pichenette, 0, 0))
+                        print(f"Pichenette !")
+                        
+                    if event.key == pygame.K_RIGHT:
+                        p.chariot.applyForce(v(self.force_pichenette, 0, 0))
+                        print(f"Pichenette !")
+
+        uni.gameInteraction = MethodType(interaction_clavier, uni)
+        uni.simulateRealTime()
+
+    run_stabilisation_pid_standard()
