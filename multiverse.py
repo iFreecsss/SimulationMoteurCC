@@ -21,6 +21,7 @@ class Univers:
                        'controleurs': [],
                        'generators': [],
                        'liaisons': [],
+                       'constraints': [],
                        'objets': []}
 
         self.step = step
@@ -49,14 +50,18 @@ class Univers:
                 self.objets['controleurs'].append(o)
             elif isinstance(o, Force):
                 self.objets['generators'].append(o)
-            elif isinstance(o, (Gravity, Force, ForceSelect, Viscosity, SpringDamper, Fil)):
+            elif isinstance(o, (Pivot, PivotMobile)): 
+                self.objets['constraints'].append(o)
+            elif isinstance(o, (Gravity, Force, ForceSelect, Viscosity, SpringDamper, Fil, Glissiere)):
                 self.objets['liaisons'].append(o)
-            elif isinstance(o, (Glissiere, Pivot, BrasCentrifuge)):
+            elif isinstance(o, BrasCentrifuge):
                 self.objets['generators'].append(o)
             elif isinstance(o, (Barre2D, Pendule, TurtleBot, PenduleBarre2D)):
                 self.objets['objets'].append(o)
             else:
-                print('Objet de type inconnu :', o)
+                if hasattr(o, 'gameDraw'):
+                     self.objets['objets'].append(o)
+                print(f"Note : Objet '{type(o).__name__}' ajouté de manière générique.")
 
     def simulateAll(self):
         # on sépare les objets en fonction de leur role 
@@ -65,7 +70,8 @@ class Univers:
 
         for source in sources:
             for rec in receveurs:
-                source.setForce(rec)
+                if hasattr(source, 'setForce'):
+                    source.setForce(rec)
 
         moteurs_controles = set()
 
@@ -73,9 +79,19 @@ class Univers:
             c.simule(self.step)
             moteurs_controles.add(c.moteur)
 
+        objets_contraints = set()
+
+        for constraint in self.objets['constraints']:
+            if hasattr(constraint, 'simule'):
+                constraint.simule(self.step)
+
         for rec in receveurs:
             if rec in moteurs_controles:
                 continue
+
+            if rec in objets_contraints:
+                continue
+            
             if hasattr(rec, 'simule'):
                 rec.simule(self.step)
 
