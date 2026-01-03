@@ -40,7 +40,7 @@ class Particule:
             a = v(0,0,0)
 
         vit = self.speed[-1] + a * step
-        p = self.position[-1] + .5 * a * step**2 + self.speed[-1] * step
+        p = self.position[-1] + .5 * a * step**2 + vit * step
 
         self.speed.append(vit)
         self.acceleration.append(a)
