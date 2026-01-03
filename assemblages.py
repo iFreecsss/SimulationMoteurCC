@@ -1,4 +1,5 @@
 from math import cos, sin, atan2
+import math
 
 from torseur import *
 from vecteur3d import Vector3D as v
@@ -153,11 +154,9 @@ class Pendule:
     def getPosition(self):
         return self.masse.position[-1]
 
-    def getParticles(self):
-        return [self.ancre, self.masse]
-
     def plot(self):
         pass
+
 
 if __name__ == "__main__":
     from assemblages import *
@@ -221,9 +220,9 @@ if __name__ == "__main__":
         L0 = 1.0
 
         uni = Univers(name="Pendule Simple", game=True, dimensions=(10, 10))
-        p = Pendule(attache_pos=v(1.5, 5, 0), longueur=L0, angle_init=np.pi/4)
+        p = Pendule(attache_pos=v(1.5, 5, 0), longueur=1.5*L0, angle_init=np.pi/4)
         gravite = Gravity(v(0, -9.81, 0))
-        pb = PenduleBarre2D(pos_piv_uni=v(3.5, 5, 0), longueur_barre=2*L0,angle_init=-np.pi/4)
+        pb = PenduleBarre2D(pos_piv_uni=v(3.5, 5, 0), longueur_barre=L0,angle_init=-np.pi/4)
 
         uni.addObjets(gravite, p.ancre, p.masse, p, pb)
         uni.simulateRealTime()
