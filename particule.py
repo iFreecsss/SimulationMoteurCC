@@ -191,7 +191,7 @@ class Barre2D:
 if __name__ == "__main__":
 
     from multiverse import Univers
-    from forces_liaisons import *
+    from forces_liaisons import Gravity, Viscosity
     # obligé d'importer le module lui même car sinon l'objet barre2D n'est pas traitée car considérée différent
     from particule import *
 
