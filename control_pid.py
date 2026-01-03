@@ -1,5 +1,5 @@
 class ControlPID_vitesse:
-    def __init__(self,moteur, K_P, K_I, K_D):
+    def __init__(self,moteur, K_P, K_I, K_D, in_univers=True):
 
         self.K_P = K_P
         self.K_I = K_I
@@ -10,6 +10,11 @@ class ControlPID_vitesse:
         self.vitesse_desiree = 0
         self.erreur_prec = 0
         self.int = 0
+
+        # Flag pour indiquer si le contrôleur est dans l'univers de simulation 
+        # permet de ne pas devoir simuler d'un cote les moteurs en plus des controleur 
+        # en revanche dans l'univers on ne veut pas ça sinon les moteurs seraient simulés deux fois
+        self.in_univers = in_univers
 
 
     def __str__(self):
@@ -62,7 +67,9 @@ class ControlPID_vitesse:
         tension = (self.K_P * erreur) + (self.K_I * self.int) + (self.K_D * derivee)
 
         self.moteur.setVoltage(tension)
-        self.moteur.simule(step)
+
+        if not self.in_univers:
+            self.moteur.simule(step)
 
         self.erreur_prec = erreur
 
@@ -102,9 +109,9 @@ if __name__ == "__main__":
         m_bf_PI = MoteurCC(name="Moteur BF PI")
         m_bf_P = MoteurCC(name="Moteur BF P")
 
-        control_PID = ControlPID_vitesse(m_bf_PID, K_P=20, K_I=50, K_D=0.1)
-        control_PI = ControlPID_vitesse(m_bf_PI, K_P=20, K_I=100, K_D=0.0)
-        control_P = ControlPID_vitesse(m_bf_P, K_P=20, K_I=0.0, K_D=0.0)
+        control_PID = ControlPID_vitesse(m_bf_PID, K_P=20, K_I=50, K_D=0.1, in_univers=False)
+        control_PI = ControlPID_vitesse(m_bf_PI, K_P=20, K_I=100, K_D=0.0, in_univers=False)
+        control_P = ControlPID_vitesse(m_bf_P, K_P=20, K_I=0.0, K_D=0.0, in_univers=False)
 
         t = 0
 
@@ -147,7 +154,7 @@ if __name__ == "__main__":
     # run_sim_vitesse(target=2.0, duration=5.0, step=0.001)
 
 class ControlPID_position:
-    def __init__(self, moteur, K_P, K_I, K_D):
+    def __init__(self, moteur, K_P, K_I, K_D, in_univers=True):
         self.moteur = moteur
         self.K_P = K_P
         self.K_I = K_I
@@ -156,6 +163,8 @@ class ControlPID_position:
         self.position_desiree = 0.0
         self.erreur_prec = 0.0
         self.int = 0.0
+
+        self.in_univers = in_univers
 
     def setTarget(self, angle_rad):
         self.position_desiree = angle_rad
@@ -174,7 +183,9 @@ class ControlPID_position:
         tension = (self.K_P * erreur) + (self.K_I * self.int) + (self.K_D * derivee)
 
         self.moteur.setVoltage(tension)
-        self.moteur.simule(step)
+
+        if not self.in_univers:
+            self.moteur.simule(step)
 
         self.erreur_prec = erreur
         
@@ -204,9 +215,9 @@ if __name__ == "__main__":
         m_bf_PI = MoteurCC(name="Moteur BF PI")
         m_bf_P = MoteurCC(name="Moteur BF P")
 
-        control_PID = ControlPID_position(m_bf_PID, K_P=30, K_I=50, K_D=10)
-        control_PI = ControlPID_position(m_bf_PI, K_P=30, K_I=50, K_D=0.0)
-        control_P = ControlPID_position(m_bf_P, K_P=30, K_I=0.0, K_D=0.0)
+        control_PID = ControlPID_position(m_bf_PID, K_P=30, K_I=50, K_D=10, in_univers=False)
+        control_PI = ControlPID_position(m_bf_PI, K_P=30, K_I=50, K_D=0.0, in_univers=False)
+        control_P = ControlPID_position(m_bf_P, K_P=30, K_I=0.0, K_D=0.0, in_univers=False)
 
         t = 0
 
@@ -243,7 +254,7 @@ if __name__ == "__main__":
         plt.figure(figsize=(30, 20))
         for D in Ds:
             moteur = MoteurCC(name=f"PD D={D}")
-            pid = ControlPID_position(moteur, K_P=20, K_I=0, K_D=D)
+            pid = ControlPID_position(moteur, K_P=20, K_I=0, K_D=D, in_univers=False)
 
             t = 0
             times = []
@@ -270,7 +281,7 @@ if __name__ == "__main__":
         plt.figure(figsize=(30, 20))
         for P in Ps:
             moteur = MoteurCC(name=f"P P={P}")
-            pid = ControlPID_position(moteur, K_P=P, K_I=0, K_D=0)
+            pid = ControlPID_position(moteur, K_P=P, K_I=0, K_D=0, in_univers=False)
 
             t = 0
             times = []
