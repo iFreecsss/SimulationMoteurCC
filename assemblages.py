@@ -370,7 +370,6 @@ class PenduleInverse:
         force_inertie = accel_chariot * (-self.barre.mass)
         self.barre.applyEffort(Force=force_inertie, Point=0)
 
-
         self.pivot.simule(step)
 
     def gameDraw(self, screen, scale):
@@ -380,17 +379,9 @@ class PenduleInverse:
         self.barre.gameDraw(screen, scale)
         self.pivot.gameDraw(screen, scale)
 
-    def get_state(self):
-        return {
-            'x': self.chariot.getPosition().x,
-            'v': self.chariot.getSpeed().x,
-            'theta': self.barre.theta - 1.57079632679, # pi/2
-            'omega': self.barre.omega
-        }
-
     # les trois méthodes suivantes sont juste pour que le PID puisse accéder aux informations de l'état
-    # je pourrais créer une autre classe pour gérer cela mais comme à terme le but est de controler avec
-    # un moteurCC à la base, je préfère garder cela ici
+    # je pourrais créer une autre classe controlPID pour gérer cela et que ce soit cohérent en terme de nom de variables
+    # mais comme à terme le but est de controler avec un moteurCC à la base, je préfère garder cela ici
 
     def getPosition(self):
         return self.barre.theta
@@ -427,7 +418,7 @@ if __name__ == "__main__":
         
         uni.simulateRealTime()
 
-    run_pendule_class()
+    # run_pendule_class()
 
 if __name__ == "__main__":
     from multiverse import Univers, v
@@ -439,12 +430,11 @@ if __name__ == "__main__":
         uni = Univers(name="Pendule Inversé - PID Standard", game=True, dimensions=(10, 10))
     
         p = PenduleInverse(pos_chariot=v(5, 2, 0), angle_init=np.pi/2, longueur_barre=1.0, largeur_barre=0.1)
-        p.barre.mass = 1.0
         # on veut un K_P élevé de sorte que le système réagisse vite mais aussi un K_D assez important pour amortir la rechute du pendule
         # et contrôler les oscillations
         pid = ControlPID_position(moteur=p, K_P=2000, K_I=0, K_D=500)
         
-        pid.setTarget(np.pi/2+0.01)
+        pid.setTarget(np.pi/2)
 
         uni.addObjets(p, pid)
         uni.force_pichenette = 10000.0
@@ -471,7 +461,114 @@ if __name__ == "__main__":
                         p.chariot.applyForce(v(self.force_pichenette, 0, 0))
                         print(f"Pichenette !")
 
+                    if event.key == pygame.K_r:
+                        p.chariot.position[-1] = v(5, 2, 0)
+                        p.chariot.speed[-1] = v(0, 0, 0)
+                        p.barre.theta = np.pi/2
+                        p.barre.omega = 0.0
+                    
+                    if event.key == pygame.K_g:
+                        self.force_pichenette = 3e5
+                        print(f"Mode giga pichenette ! Puissance : {self.force_pichenette} N")
+                        
+
         uni.gameInteraction = MethodType(interaction_clavier, uni)
         uni.simulateRealTime()
 
-    run_stabilisation_pid_standard()
+    # run_stabilisation_pid_standard()
+
+class PenduleInverseMotorise(PenduleInverse):
+    def __init__(self, pos_chariot=v(50, 50, 0), longueur_barre=1.0, largeur_barre=0.1, angle_init=0.0):
+        super().__init__(pos_chariot, longueur_barre, largeur_barre, angle_init)
+        
+        # Moteur :
+        # on imagine un moteur qui fait tourner une roue dentée de rayon 5cm qui va entraîner le chariot car on ne peut pas fixer 
+        # le moteur directement sur le chariot sinon on ferait juste tourner la particule sur elle même sans la déplacer
+        self.moteur = MoteurCC(resistance=1.0, inductance=0.001, fcem=0.5, couple=0.5, name="Moteur Traction")
+        self.moteur.position = pos_chariot
+        self.rayon_roue = 0.05
+
+    def setVoltage(self, tension):
+        self.moteur.setVoltage(tension)
+
+    def simule(self, step):
+        self.g.setForce(self.chariot)
+        self.g.setForce(self.barre)
+        self.rail.setForce(self.chariot)
+        self.visc.setForce(self.chariot)
+
+        vitesse_x = self.chariot.getSpeed().x
+        self.moteur.omega = vitesse_x / self.rayon_roue
+        self.moteur.simule(step)
+        
+        # conversion du couple moteur en force (F = C / r et C = Kc * i)
+        couple_moteur = self.moteur.Kc * self.moteur.i
+        force_traction = couple_moteur / self.rayon_roue
+
+
+        # on a fait le plus dur maintenant c'est comme pour le pendule inversé classique on a une force et on l'applique
+        self.chariot.applyForce(v(force_traction, 0, 0))
+        self.chariot.simule(step)
+
+        accel_chariot = self.chariot.acceleration[-1]
+        force_inertie = accel_chariot * (-self.barre.mass)
+        self.barre.applyEffort(Force=force_inertie, Point=0)
+
+        self.pivot.simule(step)
+        
+        self.moteur.position = self.chariot.getPosition()
+
+if __name__ == "__main__":
+    from multiverse import Univers, v
+    from control_pid import ControlPID_position
+    from assemblages import PenduleInverseMotorise 
+    import numpy as np
+    from types import MethodType
+    import pygame
+
+    def run_stabilisation_pid_motorise():
+        uni = Univers(name="Pendule Inversé - PID Motorisé", game=True, dimensions=(10, 10))
+    
+        p = PenduleInverseMotorise(pos_chariot=v(5, 2, 0), angle_init=np.pi/2+0.1, longueur_barre=1.0, largeur_barre=0.1)
+        pid = ControlPID_position(moteur=p, K_P=500, K_I=0, K_D=100)
+        
+        pid.setTarget(np.pi/2)
+
+        uni.addObjets(p, pid)
+        uni.force_pichenette = 10000.0
+
+        def interaction_clavier(self, events, keys):
+            
+            for event in events:
+                if event.type == pygame.KEYDOWN:
+                    
+                    if event.key == pygame.K_UP:
+                        self.force_pichenette += 1000.0
+                        print(f"Puissance : {self.force_pichenette} N")
+                        
+                    if event.key == pygame.K_DOWN:
+                        self.force_pichenette -= 1000.0
+                        if self.force_pichenette < 0: self.force_pichenette = 0
+                        print(f"Puissance : {self.force_pichenette} N")
+
+                    if event.key == pygame.K_LEFT:
+                        p.chariot.applyForce(v(-self.force_pichenette, 0, 0))
+                        print(f"Pichenette !")
+                        
+                    if event.key == pygame.K_RIGHT:
+                        p.chariot.applyForce(v(self.force_pichenette, 0, 0))
+                        print(f"Pichenette !")
+
+                    if event.key == pygame.K_r:
+                        p.chariot.position[-1] = v(5, 2, 0)
+                        p.chariot.speed[-1] = v(0, 0, 0)
+                        p.barre.theta = np.pi/2
+                        p.barre.omega = 0.0
+                    
+                    if event.key == pygame.K_g:
+                        self.force_pichenette = 3e4
+                        print(f"Mode giga pichenette ! Puissance : {self.force_pichenette} N")
+        uni.gameInteraction = MethodType(interaction_clavier, uni)
+        uni.simulateRealTime()
+
+    run_stabilisation_pid_motorise()
