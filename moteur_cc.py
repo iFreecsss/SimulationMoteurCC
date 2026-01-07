@@ -1,8 +1,57 @@
 from vecteur3d import Vector3D as v
 
-
 class MoteurCC:
-    """Modélisation d'un moteur à courant continu (CC) avec ses caractéristiques électriques et mécaniques."""
+    """
+        Modélisation d'un moteur à courant continu (CC) avec ses caractéristiques électriques et mécaniques.
+        
+        Attributes
+        ----------
+        resistance : float
+            Résistance électrique du moteur (Ohms).
+        inductance : float
+            Inductance électrique du moteur (Henrys).
+        fcem : float
+            Constante de force contre-électromotrice (V.s/rad).
+        couple : float
+            Constante de couple moteur (N.m/A).
+        inertie : float
+            Inertie mécanique du rotor (kg.m²).
+        visc : float
+            Coefficient de frottement visqueux (N.m.s/rad).
+        name : str
+            Nom du moteur.
+        color : tuple | None
+            Couleur pour la représentation graphique (RGB).
+        position : Vector3D
+            Position du moteur dans l'espace.
+
+        Methods
+        ----------
+        setCharge(inertie_charge, frottement_charge=0) : None
+            Définit la charge inertielle et les frottements supplémentaires appliqués au moteur.
+        setCoupleExterne(couple_resistant) : None
+            Définit un couple résistant externe appliqué au moteur.
+        setVoltage(V) : None
+            Définit la tension d'alimentation du moteur.
+        getVoltage() : float
+            Retourne la tension d'alimentation actuelle du moteur.
+        getPosition() : float
+            Retourne la position angulaire actuelle du moteur.
+        getSpeed() : float
+            Retourne la vitesse angulaire actuelle du moteur.
+        getTorque() : float
+            Retourne le couple actuel du moteur.
+        getIntensity() : float
+            Retourne l'intensité actuelle du moteur.
+        simule(step) : None
+            Simule le moteur pendant un pas de temps 'step'.
+        plot(modele_theorique=False) : None
+            Trace la courbe de la vitesse angulaire du moteur en fonction du temps.
+        plot_pos() : None
+            Trace la courbe de la position angulaire du moteur en fonction du temps.
+        gameDraw(screen, scale) : None
+            Dessine une représentation simple du moteur sur l'écran de jeu.
+        """
     def __init__(self, resistance=1, inductance=0, fcem=0.01, couple=0.01, inertie=0.01, visc=0.1, name="MoteurCC", color=None, position=v(0,0,0)):
 
         # param généraux
@@ -245,7 +294,6 @@ class MoteurCC:
         
         pygame.draw.line(screen, (0, 0, 0), (X, Y), (end_x, end_y), 4)
         
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
