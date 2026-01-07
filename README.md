@@ -6,8 +6,8 @@
 
 2) le controle des turtlebot je ne comprends pas trop. Je comprends que l'objectif est de controler le bot en controlant l'orientation des roues avec j'imagine le controleur réalisé un peu avant. En revanche qu'estce qu'il entend par vitesse imposées ? qui plus est pourquoi la vitesse est imposée avant même qu'on nous demande d'ajouter les moteurs ?
 
-3) Les tests de validations sont incompréhensibles et pas français.
-
 ## Réponses
 
 1) Quand je controlle en vitesse j'utilise effectivement un ordre 1 si je n'active que KP mais en position j'ajoute déjà un intégrateur pour passer de la vitesse à la position. C'est donc normal d'avoir des oscillations.
+
+2) 
