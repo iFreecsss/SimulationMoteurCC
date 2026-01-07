@@ -154,8 +154,7 @@ class Vector3D:
     
     def __rsub__(self, other):
         return -(self - other)
-            
-    
+
     def __repr__(self):
         return f"Vector3D({self.x}, {self.y}, {self.z})"
     
@@ -259,9 +258,6 @@ class Vector3D:
         x_new = self.x * cos(theta) - self.y * sin(theta)
         y_new = self.x * sin(theta) + self.y * cos(theta)
         return Vector3D(x_new, y_new, self.z)
-
-
-
 
 if __name__ == "__main__":
     
