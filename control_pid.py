@@ -1,4 +1,43 @@
 class ControlPID_vitesse:
+    """
+    Contrôleur PID de vitesse pour un moteur CC.
+    
+    Attributes
+    ----------
+    K_P : float
+        Gain proportionnel.
+    K_I : float
+        Gain intégral.
+    K_D : float
+        Gain dérivé.
+    moteur : MoteurCC
+        Le moteur contrôlé par le PID.
+    vitesse_desiree : float
+        La vitesse cible en rad/s.
+    erreur_prec : float
+        L'erreur de vitesse au pas de simulation précédent.
+    int : float
+        Terme intégral de l'erreur.
+    in_univers : bool
+        Indique si le contrôleur est intégré dans l'univers de simulation.
+        
+    Methods
+    -------
+    setTarget(vitesse)
+        Définit la vitesse cible.
+    getStaticError()
+        Retourne l'erreur statique actuelle.
+    getTheoricalStaticError()
+        Calcule l'erreur statique théorique en régime permanent.
+    getTimeResponse(pourcent=5)
+        Calcule le temps de réponse pour atteindre un certain pourcentage de la consigne.
+    simule(step)
+        Simule un pas de temps du contrôleur PID.
+    plot(moteur_compare=None)
+        Trace la réponse en vitesse du moteur en fonction du temps.
+    plotVoltage()
+        Trace la tension appliquée au moteur en fonction du temps.
+    """
     def __init__(self,moteur, K_P, K_I, K_D, in_univers=True):
 
         self.K_P = K_P
@@ -16,19 +55,43 @@ class ControlPID_vitesse:
         # en revanche dans l'univers on ne veut pas ça sinon les moteurs seraient simulés deux fois
         self.in_univers = in_univers
 
-
     def __str__(self):
         return f"ControlPID(K_P={self.K_P}, K_I={self.K_I}, K_D={self.K_D}, moteur={self.moteur})"
+    
     def __repr__(self):
         return str(self)
 
     def setTarget(self, vitesse):
+        """
+        Définit la vitesse cible du contrôleur PID.
+
+        Parameters
+        ----------
+        vitesse : float
+            La vitesse cible en rad/s.
+        """
         self.vitesse_desiree = vitesse
 
     def getStaticError(self):
+        """
+        Retourne l'erreur statique actuelle.
+
+        Returns
+        -------
+        float
+            L'erreur statique entre la vitesse désirée et la vitesse actuelle du moteur.
+        """
         return self.vitesse_desiree - self.moteur.getSpeed()
     
     def getTheoricalStaticError(self):
+        """
+        Calcule l'erreur statique théorique.
+        
+        Returns
+        -------
+        float
+            L'erreur statique théorique.
+        """
         # si on a un terme intégral, l'erreur statique est nulle théoriquement
         if self.K_I > 0:
             return 0.0
@@ -41,6 +104,14 @@ class ControlPID_vitesse:
         return self.vitesse_desiree / (1 + K_BO)
     
     def getTimeResponse(self, pourcent=5):
+        """
+        Calcule le temps de réponse pour atteindre un certain pourcentage de la consigne.
+        
+        Parameters
+        ----------
+        pourcent : float, optional
+            Le pourcentage de la consigne à atteindre (par défaut 5).
+        """
 
         ts = self.moteur.time_history
         vs = self.moteur.speed_history
@@ -52,8 +123,15 @@ class ControlPID_vitesse:
                 return f"Temps de réponse à {pourcent}% : {t} s"
         return f"Temps de réponse à {pourcent}% non atteint."
 
-
     def simule(self, step):
+        """
+        Simule un pas de temps du contrôleur PID.
+
+        Parameters
+        ----------
+        step : float
+            Le pas de temps de la simulation en secondes.
+        """
 
         vitesse_actuelle = self.moteur.getSpeed()
         erreur = self.vitesse_desiree - vitesse_actuelle
@@ -74,6 +152,14 @@ class ControlPID_vitesse:
         self.erreur_prec = erreur
 
     def plot(self, moteur_compare=None):
+        """
+        Trace la vitesse des moteurs pour comparaison.
+
+        Parameters
+        ----------
+        moteur_compare : list, optional
+            Liste des moteurs à comparer (par défaut None).
+        """
         import matplotlib.pyplot as plt
         import numpy as np
 
@@ -86,6 +172,9 @@ class ControlPID_vitesse:
         plt.legend()
 
     def plotVoltage(self):
+        """
+        Trace la tension appliquée au moteur au cours du temps.
+        """
         import matplotlib.pyplot as plt
         import numpy as np
 
@@ -153,6 +242,43 @@ if __name__ == "__main__":
     # run_sim_vitesse(target=2.0, duration=5.0, step=0.001)
 
 class ControlPID_position:
+    """
+    Contrôleur PID de position pour un moteur CC.
+
+    Attributes
+    ----------
+    K_P : float
+        Gain proportionnel.
+    K_I : float
+        Gain intégral.
+    K_D : float
+        Gain dérivé.
+    moteur : MoteurCC
+        Le moteur contrôlé par le PID.
+    position_desiree : float
+        La position cible en radians.
+    erreur_prec : float
+        L'erreur de position au pas de simulation précédent.
+    int : float
+        Terme intégral de l'erreur.
+    in_univers : bool
+        Indique si le contrôleur est intégré dans l'univers de simulation.
+    getPosition : function
+        Fonction pour obtenir la position actuelle du moteur.
+    getSpeed : function
+        Fonction pour obtenir la vitesse actuelle du moteur.
+
+    Methods
+    -------
+    setTarget(angle_rad)
+        Définit la position cible.
+    simule(step)
+        Simule un pas de temps du contrôleur PID.
+    getStaticError()
+        Retourne l'erreur statique actuelle.
+    plot(moteur_compare=None)
+        Trace la réponse en position du moteur en fonction du temps.
+    """
     def __init__(self, moteur, K_P, K_I, K_D, in_univers=True, getPosition=None, getSpeed=None):
         self.moteur = moteur
         self.K_P = K_P
@@ -169,9 +295,25 @@ class ControlPID_position:
         self.getPosition = getPosition if getPosition else moteur.getPosition
 
     def setTarget(self, angle_rad):
+        """
+        Définit la position cible du contrôleur PID.
+
+        Parameters
+        ----------
+        angle_rad : float
+            La position cible en radians.
+        """
         self.position_desiree = angle_rad
 
     def simule(self, step):
+        """
+        Simule un pas de temps du contrôleur PID.
+        
+        Parameters
+        ----------
+        step : float
+            Le pas de temps de la simulation en secondes.
+        """
         
         erreur = self.position_desiree - self.getPosition()
 
@@ -192,9 +334,20 @@ class ControlPID_position:
         self.erreur_prec = erreur
         
     def getStaticError(self):
+        """
+        Retourne l'erreur statique actuelle.
+        
+        Returns
+        -------
+        float
+            L'erreur statique entre la position désirée et la position actuelle du moteur.
+        """
         return self.position_desiree - self.moteur.getPosition()
 
     def plot(self, moteur_compare=None):
+        """
+        Trace la réponse en position du moteur en fonction du temps.
+        """
         import matplotlib.pyplot as plt
 
         self.moteur.plot_pos()
@@ -204,7 +357,6 @@ class ControlPID_position:
             for moteur in moteur_compare:
                 moteur.plot_pos()
                 plt.legend()
-
 
 if __name__ == "__main__":
     from moteur_cc import MoteurCC
