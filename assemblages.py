@@ -111,7 +111,7 @@ if __name__ == "__main__":
         bras.plot()
         plt.show()
     
-    # run_centrifuge()
+    #run_centrifuge()
 
 class Pendule:
     def __init__(self, attache_pos=v(0, 0, 0), longueur=1.0, angle_init=0.0):
@@ -225,7 +225,7 @@ if __name__ == "__main__":
         uni.addObjets(gravite, p.ancre, p.masse, p, pb)
         uni.simulateRealTime()
 
-    run_both()
+    # run_both()
 
 class TurtleBot:
     def __init__(self, position=v(0,0,0), orientation=0, name='TurtleBot', color=None):
@@ -475,7 +475,7 @@ if __name__ == "__main__":
         uni.gameInteraction = MethodType(interaction_clavier, uni)
         uni.simulateRealTime()
 
-    # run_stabilisation_pid_standard()
+    #run_stabilisation_pid_standard()
 
 class PenduleInverseMotorise(PenduleInverse):
     def __init__(self, pos_chariot=v(50, 50, 0), longueur_barre=1.0, largeur_barre=0.1, angle_init=0.0):
@@ -487,9 +487,6 @@ class PenduleInverseMotorise(PenduleInverse):
         self.moteur = MoteurCC(resistance=1.0, inductance=0.001, fcem=0.5, couple=0.5, name="Moteur Traction")
         self.moteur.position = pos_chariot
         self.rayon_roue = 0.05
-
-    def setVoltage(self, tension):
-        self.moteur.setVoltage(tension)
 
     def simule(self, step):
         self.g.setForce(self.chariot)
@@ -530,7 +527,7 @@ if __name__ == "__main__":
         uni = Univers(name="Pendule Inversé - PID Motorisé", game=True, dimensions=(10, 10))
     
         p = PenduleInverseMotorise(pos_chariot=v(5, 2, 0), angle_init=np.pi/2+0.1, longueur_barre=1.0, largeur_barre=0.1)
-        pid = ControlPID_position(moteur=p, K_P=500, K_I=0, K_D=100)
+        pid = ControlPID_position(moteur=p.moteur, K_P=500, K_I=0, K_D=100, getPosition=p.barre.getAngle, getSpeed=p.barre.getSpeed)
         
         pid.setTarget(np.pi/2)
 
