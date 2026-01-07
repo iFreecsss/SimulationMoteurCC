@@ -104,9 +104,12 @@ class Barre2D:
 
     def getPosition(self):
         return self.G
+    
+    def getAngle(self):
+        return self.theta
 
     def getSpeed(self):
-        return self.vitesse
+        return self.omega
 
     def applyEffort(self, Force=v(), Torque=v(),Point=0):
         if self.fixed:
