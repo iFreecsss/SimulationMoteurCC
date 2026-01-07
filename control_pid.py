@@ -97,7 +97,6 @@ class ControlPID_vitesse:
         plt.plot(t, tensions, color=color, label=f'Tension appliquée à {self.moteur.name}')
         plt.legend()
 
-
 if __name__ == "__main__":
     from moteur_cc import MoteurCC
 
@@ -154,7 +153,7 @@ if __name__ == "__main__":
     # run_sim_vitesse(target=2.0, duration=5.0, step=0.001)
 
 class ControlPID_position:
-    def __init__(self, moteur, K_P, K_I, K_D, in_univers=True):
+    def __init__(self, moteur, K_P, K_I, K_D, in_univers=True, getPosition=None, getSpeed=None):
         self.moteur = moteur
         self.K_P = K_P
         self.K_I = K_I
@@ -166,19 +165,22 @@ class ControlPID_position:
 
         self.in_univers = in_univers
 
+        self.getSpeed = getSpeed if getSpeed else moteur.getSpeed
+        self.getPosition = getPosition if getPosition else moteur.getPosition
+
     def setTarget(self, angle_rad):
         self.position_desiree = angle_rad
 
     def simule(self, step):
         
-        erreur = self.position_desiree - self.moteur.getPosition()
+        erreur = self.position_desiree - self.getPosition()
 
         # terme intégral
         self.int += erreur * step
 
         # terme dérivé
         # d erreur /dt = d(target - theta)/dt = 0 - d theta/dt = -vitesse angulaire
-        derivee = -self.moteur.getSpeed()
+        derivee = -self.getSpeed()
 
         tension = (self.K_P * erreur) + (self.K_I * self.int) + (self.K_D * derivee)
 
