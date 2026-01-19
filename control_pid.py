@@ -56,7 +56,7 @@ class ControlPID_vitesse:
         self.in_univers = in_univers
 
     def __str__(self):
-        return f"ControlPID(K_P={self.K_P}, K_I={self.K_I}, K_D={self.K_D}, moteur={self.moteur})"
+        return f"ControlPID_vitesse(K_P={self.K_P}, K_I={self.K_I}, K_D={self.K_D}, moteur={self.moteur})"
     
     def __repr__(self):
         return str(self)
@@ -294,6 +294,12 @@ class ControlPID_position:
         self.getSpeed = getSpeed if getSpeed else moteur.getSpeed
         self.getPosition = getPosition if getPosition else moteur.getPosition
 
+    def __str__(self):
+        return f"ControlPID_position(K_P={self.K_P}, K_I={self.K_I}, K_D={self.K_D}, moteur={self.moteur})"
+    
+    def __repr__(self):
+        return str(self)
+
     def setTarget(self, angle_rad):
         """
         Définit la position cible du contrôleur PID.
@@ -459,3 +465,92 @@ if __name__ == "__main__":
         plt.show()
 
     run_compare_PD(target=pi/2) 
+
+class ControlPID_Turtle:
+    def __init__(self, robot, Kp_lin=2.0, Ki_lin=1.0, Kd_lin=0.5, Kp_ang=5.0, Ki_ang=1.0, Kd_ang=0.5):
+        self.robot = robot
+
+        # gains PID pour la rotation et la translation
+        self.Kp_lin = Kp_lin
+        self.Kp_ang = Kp_ang
+        self.Ki_lin = Ki_lin
+        self.Ki_ang = Ki_ang
+        self.Kd_lin = Kd_lin
+        self.Kd_ang = Kd_ang
+
+        # initial gains pour après 
+        self.int_rot = 0.0
+        self.int_trans = 0.0
+        self.derivee_rot = 0.0
+        self.derivee_trans = 0.0
+
+
+        self.target = None
+
+    def __str__(self):
+        return f"ControlPID_Turtle(Kp_lin={self.Kp_lin}, Ki_lin={self.Ki_lin}, Kd_lin={self.Kd_lin}, Kp_ang={self.Kp_ang}, Ki_ang={self.Ki_ang}, Kd_ang={self.Kd_ang}, robot={self.robot})"
+    
+    def __repr__(self):
+        return str(self)
+
+    def setTarget(self, target):
+        self.target = target
+
+    def simule(self, step):
+        if self.target is None:
+            return
+
+        from math import atan2, pi, cos
+
+        erreur = self.target - self.robot.position
+        distance = erreur.mod()
+
+        if distance < 0.05:
+            self.robot.speedTrans = 0
+            self.robot.speedRot = 0
+            return
+
+        theta = atan2(erreur.y, erreur.x)
+        
+        # gestion l'angle à choisir, si je veux tourner de 350 c'est plus court de tourner de -10
+        diff = theta - self.robot.orientation
+        while diff > pi: 
+            diff -= 2*pi
+        while diff < -pi: 
+            diff += 2*pi
+
+        # terme intégral
+        self.int_rot += diff * step
+        self.int_trans += erreur * step
+
+        # terme dérivé
+        # d erreur /dt = d(target - theta)/dt = 0 - d theta/dt = -vitesse angulaire
+        self.derivee_rot = -self.robot.speedRot
+        self.derivee_trans = -self.robot.speedTrans
+
+        # gains en rotation
+        rot_kp = self.Kp_ang * diff
+        rot_ki = self.Ki_ang * self.int_rot
+        rot_kd = self.Kd_ang * self.derivee_rot
+
+        self.robot.speedRot = rot_kp + rot_ki + rot_kd
+
+        # gains en translation
+        trans_kp = self.Kp_lin * distance
+        trans_ki = self.Ki_lin * self.int_trans
+        trans_kd = self.Kd_lin * self.derivee_trans
+
+        self.robot.speedTrans = trans_kp + trans_ki + trans_kd
+
+        # translation proportionnelle et on réduit la vitesse si on n'est pas aligné sinon j'ai essayé et ça part en vrille
+        align = cos(diff)
+        self.robot.speedTrans = self.Kp_lin * distance * max(0, align)
+
+        # saturation qui avait été proposée par el professor
+        if self.robot.speedTrans > self.robot.speedTransMax: 
+            self.robot.speedTrans = self.robot.speedTransMax
+            
+        if self.robot.speedRot > self.robot.speedRotMax: 
+            self.robot.speedRot = self.robot.speedRotMax
+        elif self.robot.speedRot < -self.robot.speedRotMax: 
+            self.robot.speedRot = -self.robot.speedRotMax
