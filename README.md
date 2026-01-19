@@ -11,3 +11,7 @@
 1) Quand je controlle en vitesse j'utilise effectivement un ordre 1 si je n'active que KP mais en position j'ajoute déjà un intégrateur pour passer de la vitesse à la position. C'est donc normal d'avoir des oscillations.
 
 2) 
+
+
+IL m'a dit que d'abord l'utilisateur devait donner les vitesses des roues genre en entrée puis que ensuite avec les moterus il doit donner les coord operationnel genre la position final ou on veut aller et notre controleur doit gerer les vitesses rot/trans pour y aller 
+
