@@ -12,7 +12,6 @@ from moteur_cc import *
 import pygame
 from pygame.locals import *
 
-
 class BrasCentrifuge:
     def __init__(self, moteur, glissiere, particule):
         self.moteur = moteur.moteur
@@ -228,6 +227,98 @@ if __name__ == "__main__":
     # run_both()
 
 class TurtleBot:
+    def __init__(self, P0=v(0,0,0), R0=0, name='TurtleBot', color=(0, 255, 0)):
+        
+        self.position = P0
+        self.orientation = R0
+        self.pose = [(P0, R0)]
+        self.name = name
+        self.color = color
+        
+        # intialisation des vitesses
+        self.speedTrans = 0.0
+        self.speedRot = 0.0
+        
+        # Paramètres max
+        self.speedTransMax = 5.0
+        self.speedRotMax = 10.0 
+
+    def simule(self, step):
+        self.orientation += self.speedRot * step
+        
+        dx = self.speedTrans * cos(self.orientation) * step
+        dy = self.speedTrans * sin(self.orientation) * step
+        self.position = self.position + v(dx, dy, 0)
+        
+        self.pose.append((self.position, self.orientation))
+
+    def gameDraw(self, screen, scale):
+        
+        X = int(scale * self.position.x)
+        Y = int(scale * self.position.y)
+        
+        pygame.draw.circle(screen, self.color, (X, Y), 15)
+        
+        end_x = X + int(20 * cos(self.orientation))
+        end_y = Y + int(20 * sin(self.orientation))
+        pygame.draw.line(screen, (0,0,0), (X, Y), (end_x, end_y), 3)
+
+if __name__ == "__main__":
+    from multiverse import Univers, v
+    from control_pid import ControlPID_Turtle
+    from types import MethodType
+
+    MODE = "AUTO"
+    MODE = "MANUEL"
+
+    def run_turtle_final():
+        uni = Univers(name="TurtleBot Final", game=True, dimensions=(10, 10))
+        rob = TurtleBot(P0=v(5, 5, 0), name="Bot")
+        
+        if MODE == "MANUEL":
+            uni.addObjets(rob)
+            
+            def interact_manuel(self, events, keys):
+                
+                rob.speedTrans = 0
+                rob.speedRot = 0
+                
+                if keys[K_UP]:rob.speedTrans = 2.0
+                if keys[K_DOWN]:rob.speedTrans = -2.0
+                if keys[K_LEFT]:rob.speedRot = 3.0
+                if keys[K_RIGHT]:rob.speedRot = -3.0
+            
+            uni.gameInteraction = MethodType(interact_manuel, uni)
+
+        elif MODE == "AUTO":
+            
+            # On ajoute le contrôleur dédié (voir si faut régler les gains)
+            ctrl = ControlPID_Turtle(rob, Kp_lin=2.0, Ki_lin=1.0, Kd_lin=0.5, Kp_ang=5.0, Ki_ang=1.0, Kd_ang=0.5)
+            
+            uni.target = v(2, 2, 0)
+            visu = Particule(position=uni.target, color=(255,0,0), masse=0)
+            ctrl.setTarget(uni.target)
+            
+            uni.addObjets(rob, ctrl, visu)
+
+            def interact_auto(self, events, keys):
+                for e in events:
+                    if e.type == MOUSEBUTTONDOWN:
+                        mx, my = pygame.mouse.get_pos()
+                        px = mx / self.scale
+                        py = (self.gameDimensions[1] - my) / self.scale
+                        
+                        uni.target = v(px, py, 0)
+                        visu.position[-1] = uni.target
+                        ctrl.setTarget(uni.target)
+            
+            uni.gameInteraction = MethodType(interact_auto, uni)
+
+        uni.simulateRealTime()
+
+    run_turtle_final()
+
+class TurtleMotoBot:
     def __init__(self, position=v(0,0,0), orientation=0, name='TurtleBot', color=None):
         
         self.position = position
@@ -298,37 +389,39 @@ if __name__ == "__main__":
 
         uni = Univers(name="Moto GP", game=True, dimensions=(5,5))
         
-        rob = TurtleBot(position=v(2.5, 2.5, 0), name="MotoBot")
+        rob = TurtleMotoBot(position=v(2.5, 2.5, 0), name="MotoBot")
+        control = ControlPID_vitesse(moteur=rob.moteur_ar, K_P=5.0, K_I=0.1, K_D=0.01)
+        control.setTarget(10.0)
         
-        uni.addObjets(rob)
+        uni.addObjets(rob, control)
 
         def control_tension(self, events, keys):
             import pygame
 
             # on définit les touches qui nous permettent de contrôler le robot en jouant sur sa tension uniquement.
-            U_propulsion = 12.0
-            U_direction = 12.0 
+            propulsion = 12.0
+            v_direction = 12.0 
             
-            val_propulsion = 0
-            val_direction = 0
+            tension = 0
+            direction = 0
             
             if keys[pygame.K_UP]:
-                val_propulsion = U_propulsion
+                tension = propulsion
             elif keys[pygame.K_DOWN]:
-                val_propulsion = -U_propulsion
+                tension = -propulsion
                 
             if keys[pygame.K_LEFT]:
-                val_direction = U_direction
+                direction = v_direction
             elif keys[pygame.K_RIGHT]:
-                val_direction = -U_direction
+                direction = -v_direction
                 
-            rob.setVoltage(val_direction, val_propulsion)
+            rob.setVoltage(direction, tension)
 
         uni.gameInteraction = MethodType(control_tension, uni)
 
         uni.simulateRealTime()
 
-    # run_turtlemotobot()
+    run_turtlemotobot()
 
 class PenduleInverse:
     def __init__(self, pos_chariot=v(50, 50, 0), longueur_barre=10.0, largeur_barre=1.0, angle_init=0.0):
@@ -569,3 +662,7 @@ if __name__ == "__main__":
         uni.simulateRealTime()
 
     run_stabilisation_pid_motorise()
+
+
+
+
