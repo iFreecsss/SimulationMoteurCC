@@ -88,9 +88,9 @@ class MoteurCC:
         # capage de la tension maximale
         self.Um_max = 24.0 # tension maximale de beaucoup de moteurs
 
-
     def __str__(self):
         return (f"MoteurCC(R={self.R}, L={self.L}, Ke={self.Ke}, Kc={self.Kc}, I={self.I}, Nu={self.Nu})")
+    
     def __repr__(self):
         return str(self)
     
@@ -140,6 +140,7 @@ class MoteurCC:
             float: Tension d'alimentation actuelle (Volts).
         """
         return self.Um
+    
     def getPosition(self): 
         """
         Retourne la position angulaire actuelle du moteur.
@@ -149,6 +150,7 @@ class MoteurCC:
             float: Position angulaire actuelle (radians).
         """
         return self.theta
+    
     def getSpeed(self): 
         """
         Retourne la vitesse angulaire actuelle du moteur.
@@ -158,6 +160,7 @@ class MoteurCC:
             float: Vitesse angulaire actuelle (radians/s).
         """
         return self.omega
+    
     def getTorque(self): 
         """
         Retourne le couple actuel du moteur.
@@ -167,6 +170,7 @@ class MoteurCC:
             float: Couple actuel (N.m).
         """
         return self.couple
+    
     def getIntensity(self): 
         """
         Retourne l'intensité actuelle du moteur.
@@ -176,8 +180,6 @@ class MoteurCC:
             float: Intensité actuelle (A).
         """
         return self.i
-
-
 
     def simule(self, step):
         """
@@ -267,7 +269,6 @@ class MoteurCC:
 
         plt.plot(t, positions, color=self.color, label=f"{self.name}")
         
-
     def gameDraw(self, screen, scale):
         """
         Dessine une représentation simple du moteur sur l'écran de jeu.
