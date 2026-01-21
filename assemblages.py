@@ -1,4 +1,5 @@
-from math import cos, sin, atan2
+from math import cos, pi, sin, atan2
+import matplotlib.pyplot as plt
 
 from torseur import *
 from vecteur3d import Vector3D as v
@@ -241,7 +242,7 @@ class TurtleBot:
         
         # Paramètres max
         self.speedTransMax = 5.0
-        self.speedRotMax = 10.0 
+        self.speedRotMax = 5.0 
 
     def simule(self, step):
         self.orientation += self.speedRot * step
@@ -269,7 +270,7 @@ if __name__ == "__main__":
     from types import MethodType
 
     MODE = "AUTO"
-    MODE = "MANUEL"
+    #MODE = "MANUEL"
 
     def run_turtle_final():
         uni = Univers(name="TurtleBot Final", game=True, dimensions=(10, 10))
@@ -316,20 +317,16 @@ if __name__ == "__main__":
 
         uni.simulateRealTime()
 
-    run_turtle_final()
+    #run_turtle_final()
 
 class TurtleMotoBot:
-    def __init__(self, position=v(0,0,0), orientation=0, name='TurtleBot', color=None):
+    def __init__(self, position=v(0,0,0), orientation=0, name='TurtleBot', color=(0,255,0)):
         
         self.position = position
         self.orientation = orientation
         self.name = name
         
-        if color is None:
-            import numpy as np
-            self.color = tuple(np.random.randint(0,256,3))
-        else:
-            self.color = color
+        self.color = color
 
         # un peu comme une moto ou un 2 roues en général dans lesquels la roue arrière est motrice et la roue avant est directrice, 
         # on divise les tâches en 2 en utilisant un moteur qui controle la direction et un autre la propulsion
@@ -339,6 +336,8 @@ class TurtleMotoBot:
         # paramètres de la roue
         self.rayon_roue = 0.035
         self.facteur_rotation = 0.1
+        v_max = self.rayon_roue / self.facteur_rotation * self.moteur_ar.Um_max
+        print(f"Vitesse max théorique : {v_max:.2f} m/s")
 
     def setVoltage(self, vg, vd):
         self.moteur_av.setVoltage(vg)
@@ -365,6 +364,33 @@ class TurtleMotoBot:
         self.position.y += v_lineaire * sin(self.orientation) * step
         self.orientation += v_rotation * step
 
+    def target_fonction(self, target):
+        from math import atan2, pi, cos
+
+        target_dir = target - self.position
+        dist = target_dir.mod()
+
+        if dist < 0.01:
+            return {
+                'traj': 0.0,
+                'speed': 0.0
+            }
+        
+        angle_desire = atan2(target_dir.y, target_dir.x)
+        
+        orientation_actuelle = self.orientation
+        diff = angle_desire - orientation_actuelle
+        while diff > pi: diff -= 2*pi
+        while diff < -pi: diff += 2*pi
+
+        consigne_cap = orientation_actuelle + diff
+
+        alignement = max(0, cos(diff))
+        
+        v_consigne = dist * 1e3 * alignement
+        
+        return {'traj': consigne_cap,'speed': v_consigne}
+
     def gameDraw(self, screen, scale):
         import pygame
         
@@ -381,47 +407,47 @@ class TurtleMotoBot:
         pygame.draw.line(screen, (0, 0, 0), (X, Y), (end_x, end_y), 3)
 
 if __name__ == "__main__":
+    from multiverse import Univers, v
+    from assemblages import TurtleMotoBot # Importe ta nouvelle classe
+    from control_pid import ControlPID_position, ControlPID_vitesse, Pilote
+    import pygame
+    from types import MethodType
 
-    from assemblages import *
+    def run_turtle_moto_bot():
 
-    def run_turtlemotobot():
-        from types import MethodType
-
-        uni = Univers(name="Moto GP", game=True, dimensions=(5,5))
+        uni = Univers(name="Moto Generique", game=True, dimensions=(10, 10))
+        rob = TurtleMotoBot(position=v(2, 2, 0), name="MotoBot")
         
-        rob = TurtleMotoBot(position=v(2.5, 2.5, 0), name="MotoBot")
-        control = ControlPID_vitesse(moteur=rob.moteur_ar, K_P=5.0, K_I=0.1, K_D=0.01)
-        control.setTarget(10.0)
+        pid_direction = ControlPID_position(moteur=rob.moteur_av,K_P=100.0, K_I=15.0, K_D=50.0,getPosition=lambda: rob.orientation,getSpeed=lambda: rob.moteur_av.getSpeed() * rob.facteur_rotation)
+        pid_propulsion = ControlPID_vitesse(moteur=rob.moteur_ar,K_P=30.0, K_I=5.0, K_D=100.0)
+        pid_propulsion.anti_windup = True
+
+        pilote = Pilote(rob)
         
-        uni.addObjets(rob, control)
+        pilote.addController('traj', pid_direction)
+        pilote.addController('speed', pid_propulsion)
+        
+        uni.target = v(8, 8, 0)
+        visu_target = Particule(position=uni.target, color=(255, 0, 0), masse=0)
+        pilote.setTarget(uni.target)
 
-        def control_tension(self, events, keys):
-            import pygame
+        uni.addObjets(rob, pilote, visu_target)
 
-            # on définit les touches qui nous permettent de contrôler le robot en jouant sur sa tension uniquement.
-            propulsion = 12.0
-            v_direction = 12.0 
-            
-            tension = 0
-            direction = 0
-            
-            if keys[pygame.K_UP]:
-                tension = propulsion
-            elif keys[pygame.K_DOWN]:
-                tension = -propulsion
-                
-            if keys[pygame.K_LEFT]:
-                direction = v_direction
-            elif keys[pygame.K_RIGHT]:
-                direction = -v_direction
-                
-            rob.setVoltage(direction, tension)
+        def interaction(self, events, keys):
+            # Changement de cible à la souris
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mx, my = pygame.mouse.get_pos()
+                    px = mx / self.scale
+                    py = (self.gameDimensions[1] - my) / self.scale
+                    uni.target = v(px, py, 0)
+                    visu_target.position[-1] = uni.target
+                    pilote.setTarget(uni.target)
 
-        uni.gameInteraction = MethodType(control_tension, uni)
-
+        uni.gameInteraction = MethodType(interaction, uni)
         uni.simulateRealTime()
 
-    run_turtlemotobot()
+    run_turtle_moto_bot()
 
 class PenduleInverse:
     def __init__(self, pos_chariot=v(50, 50, 0), longueur_barre=10.0, largeur_barre=1.0, angle_init=0.0):
@@ -661,8 +687,59 @@ if __name__ == "__main__":
         uni.gameInteraction = MethodType(interaction_clavier, uni)
         uni.simulateRealTime()
 
-    run_stabilisation_pid_motorise()
+    #run_stabilisation_pid_motorise()
 
+class Bras1R:
+    def __init__(self, longueur=1.0, masse=1.0, angle_init=0.0):
+        self.longueur = longueur
+        self.angle_init = angle_init
+        
+        G = v(cos(self.angle_init), sin(self.angle_init), 0) * (self.longueur / 2)
+        
+        self.barre = Barre2D(mass=masse, long=longueur, large=0.1, theta=angle_init, centre=G, color=(200, 50, 50))
+        self.pivot = Pivot(barre=self.barre, position_pivot_barre=-1, position_pivot_univers=v(2,2,0))
+        
+        self.moteur = MoteurCC(resistance=1.0, couple=0.5, name="Moteur Coude")
+        
+        self.g = Gravity(v(0, -9.81, 0))
 
+    def simule(self, step):
 
+        self.g.setForce(self.barre)
+        self.moteur.omega = self.barre.omega
+        self.moteur.simule(step)
+        couple_moteur = self.moteur.Kc * self.moteur.i
+        
+        self.barre.applyEffort(Torque=v(0, 0, couple_moteur))
+        
+        self.pivot.simule(step)
 
+    def gameDraw(self, screen, scale):
+        self.barre.gameDraw(screen, scale)
+        self.pivot.gameDraw(screen, scale)
+        pygame.draw.circle(screen, (100, 100, 100), (int(0), int(0)), 10)
+
+if __name__ == "__main__":
+    
+    from assemblages import Bras1R
+
+    def bras1R_BF():
+        uni = Univers(name="Bras 1R Asservi", game=True, dimensions=(5, 5))
+        bras = Bras1R(longueur=2.0, masse=1.0, angle_init=-pi/2)
+        
+        pid = ControlPID_position(
+            moteur=bras.moteur,
+            K_P=5000.0,
+            K_I=100.0,
+            K_D=1000.0,
+            getPosition=lambda: bras.barre.theta,
+            getSpeed=lambda: bras.barre.omega
+        )
+        pid.modulo = True
+        
+        pid.setTarget(pi)
+
+        uni.addObjets(bras, pid)
+        uni.simulateRealTime()
+
+    bras1R_BF()
