@@ -1,3 +1,6 @@
+from sympy import limit
+
+
 class ControlPID_vitesse:
     """
     Contrôleur PID de vitesse pour un moteur CC.
@@ -54,6 +57,7 @@ class ControlPID_vitesse:
         # permet de ne pas devoir simuler d'un cote les moteurs en plus des controleur 
         # en revanche dans l'univers on ne veut pas ça sinon les moteurs seraient simulés deux fois
         self.in_univers = in_univers
+        self.anti_windup = False
 
     def __str__(self):
         return f"ControlPID_vitesse(K_P={self.K_P}, K_I={self.K_I}, K_D={self.K_D}, moteur={self.moteur})"
@@ -123,6 +127,10 @@ class ControlPID_vitesse:
                 return f"Temps de réponse à {pourcent}% : {t} s"
         return f"Temps de réponse à {pourcent}% non atteint."
 
+    def reset(self):
+        self.erreur_prec = 0.0
+        self.int = 0.0
+
     def simule(self, step):
         """
         Simule un pas de temps du contrôleur PID.
@@ -143,6 +151,13 @@ class ControlPID_vitesse:
         # K_I : si ça fait longtemps qu'on a une erreur alors j'augmente la tension
         # K_D : si je me rapproche vite de la cible alors je diminue la tension pour éviter le dépassement
         tension = (self.K_P * erreur) + (self.K_I * self.int) + (self.K_D * derivee)
+
+        if self.anti_windup:
+            # ajout d'un anti wind up
+            if tension > self.moteur.Um_max:
+                tension = self.moteur.Um_max
+            elif tension < -self.moteur.Um_max:
+                tension = -self.moteur.Um_max
 
         self.moteur.setVoltage(tension)
 
@@ -310,6 +325,10 @@ class ControlPID_position:
             La position cible en radians.
         """
         self.position_desiree = angle_rad
+
+    def reset(self):
+        self.erreur_prec = 0.0
+        self.int = 0.0
 
     def simule(self, step):
         """
@@ -554,3 +573,41 @@ class ControlPID_Turtle:
             self.robot.speedRot = self.robot.speedRotMax
         elif self.robot.speedRot < -self.robot.speedRotMax: 
             self.robot.speedRot = -self.robot.speedRotMax
+
+class Pilote:
+    def __init__(self, robot):
+        self.robot = robot
+        self.target = None
+        self.target_fonction = robot.target_fonction
+
+        self.controllers = {} 
+
+    def addController(self, nom, pid_controller):
+        self.controllers[nom] = pid_controller
+
+    def setTarget(self, target):
+        self.target = target
+
+    def simule(self, step):
+        if self.target is None:
+            return
+
+        consignes = self.target_fonction(self.target)
+
+        for nom, valeur_cible in consignes.items():
+            if nom in self.controllers:
+                if valeur_cible == 0.0:
+                     self.controllers[nom].reset()
+                self.controllers[nom].setTarget(valeur_cible)
+                self.controllers[nom].simule(step)
+            else:
+                print(f"Aucun contrôleur PID trouvé pour {nom}")
+                return
+
+
+
+
+
+"""
+
+ajout Pilote, reset, anti_windup"""
