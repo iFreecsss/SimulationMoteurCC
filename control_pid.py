@@ -1,5 +1,4 @@
-from sympy import limit
-
+from math import pi
 
 class ControlPID_vitesse:
     """
@@ -305,6 +304,7 @@ class ControlPID_position:
         self.int = 0.0
 
         self.in_univers = in_univers
+        self.modulo = False
 
         self.getSpeed = getSpeed if getSpeed else moteur.getSpeed
         self.getPosition = getPosition if getPosition else moteur.getPosition
@@ -341,6 +341,12 @@ class ControlPID_position:
         """
         
         erreur = self.position_desiree - self.getPosition()
+
+        if self.modulo:
+            while erreur > pi:
+                erreur -= 2*pi
+            while erreur < -pi:
+                erreur += 2*pi
 
         # terme intégral
         self.int += erreur * step
@@ -582,9 +588,8 @@ class Pilote:
 
         self.controllers = {} 
 
-    def addController(self, nom, pid_controller):
-        self.controllers[nom] = pid_controller
-
+    def addController(self, nom, pid):
+        self.controllers[nom] = pid
     def setTarget(self, target):
         self.target = target
 
@@ -604,10 +609,3 @@ class Pilote:
                 print(f"Aucun contrôleur PID trouvé pour {nom}")
                 return
 
-
-
-
-
-"""
-
-ajout Pilote, reset, anti_windup"""
