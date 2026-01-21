@@ -8,16 +8,13 @@ from math import cos, sin
 
 class Particule:
 
-    def __init__(self, position=v(), init_speed=v(), masse=1.0, name='name', color=None, fixed=False):
+    def __init__(self, position=v(), init_speed=v(), masse=1.0, name='name', color=(255, 0, 0), fixed=False):
         import numpy as np
 
         self.name = name
         self.masse = masse
         
-        if color is None:
-            self.color = np.random.rand(3) * 255
-        else:
-            self.color = color
+        self.color = color
 
         self.position = [position]
         self.speed = [init_speed]
@@ -59,8 +56,6 @@ class Particule:
         xs = [p.x for p in self.position]
         ys = [p.y for p in self.position]
         plt.plot(xs, ys)
-
-    
 
     def gameDraw(self, screen, scale):
         X = int(scale * self.position[-1].x)
