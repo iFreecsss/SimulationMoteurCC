@@ -54,7 +54,6 @@ class BrasCentrifuge:
         cx = int(self.moteur.position.x * scale)
         cy = int(self.moteur.position.y * scale)
         pygame.draw.circle(screen, (50, 50, 50), (cx, cy), 10)
-
     
     def plot(self):
         import matplotlib.pyplot as plt
@@ -720,26 +719,40 @@ class Bras1R:
         pygame.draw.circle(screen, (100, 100, 100), (int(0), int(0)), 10)
 
 if __name__ == "__main__":
-    
-    from assemblages import Bras1R
+    from types import MethodType
 
     def bras1R_BF():
-        uni = Univers(name="Bras 1R Asservi", game=True, dimensions=(5, 5))
+        uni = Univers(name="Bras 1R Asservi", game=True, dimensions=(10, 10)) 
+        
         bras = Bras1R(longueur=2.0, masse=1.0, angle_init=-pi/2)
         
         pid = ControlPID_position(
             moteur=bras.moteur,
-            K_P=5000.0,
-            K_I=100.0,
-            K_D=1000.0,
+            K_P=5000.0, K_I=100.0, K_D=1000.0,
             getPosition=lambda: bras.barre.theta,
             getSpeed=lambda: bras.barre.omega
         )
         pid.modulo = True
-        
-        pid.setTarget(pi)
 
-        uni.addObjets(bras, pid)
+        part_target = Particule(position=v(5, 5, 0), color=(255, 0, 0), masse=0, name="Cible")
+
+        uni.addObjets(bras, pid, part_target)
+
+        def interaction_particule(self, events, keys):
+            vitesse_deplacement = 0.1
+            
+            if keys[K_UP]:    part_target.getPosition().y += vitesse_deplacement
+            if keys[K_DOWN]:  part_target.getPosition().y -= vitesse_deplacement
+            if keys[K_LEFT]:  part_target.getPosition().x -= vitesse_deplacement
+            if keys[K_RIGHT]: part_target.getPosition().x += vitesse_deplacement
+            
+            pos_pivot = bras.pivot.pos_univers
+            pos_cible = part_target.getPosition()
+            direction = pos_cible - pos_pivot 
+            
+            angle_desire = atan2(direction.y, direction.x)
+            pid.setTarget(angle_desire)
+
+        uni.gameInteraction = MethodType(interaction_particule, uni)
         uni.simulateRealTime()
-
     bras1R_BF()
