@@ -1,4 +1,5 @@
 from math import cos, pi, sin, atan2
+import string
 import matplotlib.pyplot as plt
 
 from torseur import *
@@ -446,7 +447,7 @@ if __name__ == "__main__":
         uni.gameInteraction = MethodType(interaction, uni)
         uni.simulateRealTime()
 
-    run_turtle_moto_bot()
+    #run_turtle_moto_bot()
 
 class PenduleInverse:
     def __init__(self, pos_chariot=v(50, 50, 0), longueur_barre=10.0, largeur_barre=1.0, angle_init=0.0):
@@ -698,7 +699,7 @@ class Bras1R:
         self.barre = Barre2D(mass=masse, long=longueur, large=0.1, theta=angle_init, centre=G, color=(200, 50, 50))
         self.pivot = Pivot(barre=self.barre, position_pivot_barre=-1, position_pivot_univers=v(2,2,0))
         
-        self.moteur = MoteurCC(resistance=1.0, couple=0.5, name="Moteur Coude")
+        self.moteur = MoteurCC(resistance=1.0, couple=2.0, name="Moteur Coude")
         
         self.g = Gravity(v(0, -9.81, 0))
 
@@ -726,12 +727,7 @@ if __name__ == "__main__":
         
         bras = Bras1R(longueur=2.0, masse=1.0, angle_init=-pi/2)
         
-        pid = ControlPID_position(
-            moteur=bras.moteur,
-            K_P=5000.0, K_I=100.0, K_D=1000.0,
-            getPosition=lambda: bras.barre.theta,
-            getSpeed=lambda: bras.barre.omega
-        )
+        pid = ControlPID_position(moteur=bras.moteur,K_P=5000.0, K_I=100.0, K_D=1000.0,getPosition=lambda: bras.barre.theta,getSpeed=lambda: bras.barre.omega)
         pid.modulo = True
 
         part_target = Particule(position=v(5, 5, 0), color=(255, 0, 0), masse=0, name="Cible")
@@ -746,13 +742,144 @@ if __name__ == "__main__":
             if keys[K_LEFT]:  part_target.getPosition().x -= vitesse_deplacement
             if keys[K_RIGHT]: part_target.getPosition().x += vitesse_deplacement
             
-            pos_pivot = bras.pivot.pos_univers
-            pos_cible = part_target.getPosition()
-            direction = pos_cible - pos_pivot 
-            
+            direction = part_target.getPosition() - bras.pivot.pos_univers
             angle_desire = atan2(direction.y, direction.x)
             pid.setTarget(angle_desire)
 
         uni.gameInteraction = MethodType(interaction_particule, uni)
         uni.simulateRealTime()
+        plt.figure(figsize=(10, 6))
+        
+        # On utilise la méthode du PID comme demandé
+        pid.plot()
+        
+        plt.title("Position angulaire du Bras au cours du temps")
+        plt.xlabel("Temps (s)")
+        plt.ylabel("Angle (rad)")
+        plt.grid(True)
+        plt.show()
+    #bras1R_BF()
+
+if __name__ == "__main__":
+    from types import MethodType
+    def bras1R_BF():
+        from multiverse import Univers, InputBox
+        import math
+
+        uni = Univers(name="Bras 1R Asservi", game=True, dimensions=(10, 10)) 
+        bras = Bras1R(longueur=2.0, masse=1.0, angle_init=-math.pi/2)
+        
+        pid = ControlPID_position(
+            moteur=bras.moteur,
+            K_P=5000.0, K_I=100.0, K_D=1000.0,
+            getPosition=lambda: bras.barre.theta,
+            getSpeed=lambda: bras.barre.omega
+        )
+        pid.modulo = True
+        
+        def nouvel_angle(text):
+            try:
+                angle_deg = float(text)
+                angle_rad = math.radians(angle_deg)
+                pid.setTarget(angle_rad)
+            except ValueError:
+                pass
+
+        box_angle = InputBox(10, 80, 140, 32, text='0', title='Angle (en °) : ', callback=nouvel_angle)
+        uni.addObjets(bras, pid, box_angle)
+        
+        uni.simulateRealTime()
+        
     bras1R_BF()
+
+class Bras2R:
+    def __init__(self, l1=1.0, l2=1.0, m1=1.0, m2=1.0, angle1=0.0, angle2=0.0):
+        self.l1 = l1
+        self.l2 = l2
+        
+        G1 = v(cos(angle1), sin(angle1), 0) * (l1 / 2)
+        self.barre1 = Barre2D(mass=m1, long=l1, large=0.1, theta=angle1, centre=G1, color='red', nom="Bras 1")
+        self.pivot1 = Pivot(barre=self.barre1, position_pivot_barre=-1, position_pivot_univers=v(2, 2, 0))
+        self.moteur1 = MoteurCC(resistance=1.0, couple=5.0, name="Moteur Epaule")
+
+        pos_coude = self.pivot1.pos_univers + v(cos(angle1), sin(angle1), 0) * l1
+        G2 = pos_coude + v(cos(angle2), sin(angle2), 0) * (l2 / 2)
+
+        self.barre2 = Barre2D(mass=m2, long=l2, large=0.1, theta=angle2, centre=G2, color='blue', nom="Bras 2")
+        
+        self.pivot2 = Pivot(barre=self.barre2, position_pivot_barre=-1, position_pivot_univers=pos_coude)
+        self.moteur2 = MoteurCC(resistance=1.0, couple=2.0, name="Moteur Coude")
+        
+        self.g = Gravity(v(0, -9.81, 0))
+
+    def simule(self, step):
+        self.g.setForce(self.barre1)
+        self.g.setForce(self.barre2)
+
+        self.moteur1.omega = self.barre1.omega
+        self.moteur1.simule(step)
+        couple1 = self.moteur1.Kc * self.moteur1.i
+
+        # La vitesse vue par le moteur est la différence entre les deux barres
+        self.moteur2.omega = self.barre2.omega - self.barre1.omega
+        self.moteur2.simule(step)
+        couple2 = self.moteur2.Kc * self.moteur2.i
+        
+        # Le moteur 1 agit sur le bras 1 uniquement 
+        # MAIS le moteur 2 agit sur les 2 !
+        total_torque_barre1 = couple1 - couple2
+        self.barre1.applyEffort(Torque=v(0, 0, total_torque_barre1))
+        self.barre2.applyEffort(Torque=v(0, 0, couple2))
+
+        # on fait comme pour le bras 1R
+        self.pivot1.simule(step)
+
+        # position du pivot 2 attaché au bras 1 dépend donc de l'angle actuel du bras 1
+        u1 = v(cos(self.barre1.theta), sin(self.barre1.theta), 0)
+        pos_coude_actuelle = self.pivot1.pos_univers + (u1 * self.barre1.long)
+        
+        self.pivot2.pos_univers = pos_coude_actuelle
+        self.pivot2.simule(step)
+
+    def gameDraw(self, screen, scale):
+        self.barre1.gameDraw(screen, scale)
+        self.barre2.gameDraw(screen, scale)
+        self.pivot1.gameDraw(screen, scale)
+        self.pivot2.gameDraw(screen, scale)
+
+if __name__ == "__main__":
+    def bras2R():
+        from multiverse import Univers, InputBox
+        from control_pid import ControlPID_position
+        import math
+
+        uni = Univers(name="Bras 2R Interactif", game=True, dimensions=(10, 10))
+        robot = Bras2R(angle1=0, angle2=0)
+
+        pid1 = ControlPID_position(moteur=robot.moteur1, K_P=3000, K_I=20, K_D=800,getPosition=lambda: robot.barre1.theta,getSpeed=lambda: robot.barre1.omega)
+        pid1.modulo = True
+
+        pid2 = ControlPID_position(moteur=robot.moteur2, K_P=3000, K_I=20, K_D=800,getPosition=lambda: robot.barre2.theta - robot.barre1.theta,getSpeed=lambda: robot.barre2.omega - robot.barre1.omega)
+        pid2.modulo = True
+
+        def angle_1(text):
+            try:
+                val = math.radians(float(text))
+                pid1.setTarget(val)
+                print(f"Consigne Bras 1 : {val} rad")
+            except: pass
+
+        def angle_2(text):
+            try:
+                val = math.radians(float(text))
+                pid2.setTarget(val)
+                print(f"Consigne Bras 2 (relatif) : {val} rad")
+            except: pass
+
+        box1 = InputBox(20, 50, 100, 32, text='0', title='Angle 1 (en °) :', callback=angle_1)
+        box2 = InputBox(20, 120, 100, 32, text='0', title='Angle 2 (en °) :', callback=angle_2)
+
+        uni.addObjets(robot, pid1, pid2, box1, box2)
+        uni.simulateRealTime()
+
+    bras2R()
