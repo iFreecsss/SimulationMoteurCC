@@ -11,7 +11,6 @@ from particule import *
 from forces_liaisons import *
 from assemblages import *
 
-
 class Univers:
     def __init__(self, name='ici', t0=0, step=0.001, dimensions=(100,100), game=False, gameDimensions=(1024,780), fps=60):
         self.name = name
@@ -21,6 +20,7 @@ class Univers:
         self.contraintes = []
         self.acteurs = []
         self.drawables = []
+        self.boxes = []
         self.all_objects = []
 
         self.step = step
@@ -56,6 +56,10 @@ class Univers:
             # elif ici car les constraints ont aussi un simule 
             elif hasattr(o, 'simule'):
                 self.acteurs.append(o)
+            
+            # pour gérer les éventuelles boites de saisie
+            if hasattr(o, 'update'):
+                self.boxes.append(o)
 
             # on peut le dessiner ?
             if hasattr(o, 'gameDraw'):
@@ -125,10 +129,18 @@ class Univers:
 
             for obj in self.drawables:
                 obj.gameDraw(screen, self.scale)
+            
+            for box in self.boxes:
+                for event in events:
+                    box.handle_event(event)
+                box.update()
 
             # get y axis upwards, origin on bottom left : La fenetre pygame a l'axe y vers le bas. On le retourne.
             flip_surface = pygame.transform.flip(screen, False, flip_y=True)
             screen.blit(flip_surface, (0, 0))
+
+            for box in self.boxes:
+                box.draw(screen)
             # On ré-affiche le texte sur l'écran final (non flippé) pour qu'il soit lisible
             text_surface_obj = font_obj.render(('Time: %.2f s' % self.time[-1]), True, (0,0,0))
             screen.blit(text_surface_obj, (10, 10))
@@ -139,40 +151,99 @@ class Univers:
         
         pygame.quit()
 
-
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    u = Univers(name='Simulation Moteur', game=True)
+    def test_moteur_cc_pid():
+        u = Univers(name='Simulation Moteur', game=True)
+        
+        m1 = MoteurCC(visc=1e-3, name='Moteur BO', position=v(50, 50, 0))
+        m2 = MoteurCC(visc=1e-3, name='Moteur BF', position=v(50, 30, 0))
+        m2_PID = ControlPID_vitesse(m2, K_P=50.0, K_I=10, K_D=0.1)
+
+        u.addObjets(m1, m2)
+        u.addObjets(m2_PID)
+
+        def interaction_clavier(self, events, keys):
+            moteur = self.acteurs[0]
+
+            if keys[pygame.K_UP]:
+                moteur.setVoltage(12.0)
+            elif keys[pygame.K_DOWN]:
+                moteur.setVoltage(-12.0)
+            elif keys[pygame.K_SPACE]:
+                moteur.setVoltage(0)
+
+        u.gameInteraction = MethodType(interaction_clavier, u)
+
+        m2_PID.setTarget(10)
+        u.simulateRealTime()
+        
+        m2_PID.plot([m1])
+        plt.show()
+    #test_moteur_cc_pid()
+
+# Source - https://stackoverflow.com/a
+# Posted by AzlanCoding, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-01-23, License - CC BY-SA 4.0
+
+class InputBox:
+
+    def __init__(self, x, y, w, h, text='', title='', callback=None):
+        pygame.font.init()
+        self.COLOR_INACTIVE = pygame.Color('lightskyblue3')
+        self.COLOR_ACTIVE = pygame.Color('dodgerblue2')
+        self.FONT = pygame.font.Font(None, 32)
+
+        self.rect = pygame.Rect(x, y, w, h)
+        self.color = self.COLOR_INACTIVE
+        self.text = text
+        self.title = title
+        self.txt_surface_title = self.FONT.render(title, True, self.color)
+        self.txt_surface = self.FONT.render(text, True, self.color)
+        self.active = False
+        self.callback = callback
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # If the user clicked on the input_box rect.
+            if self.rect.collidepoint(event.pos):
+                # Toggle the active variable.
+                self.active = not self.active
+                self.text = ''
+            else:
+                self.active = False
+            # Change the current color of the input box.
+            self.color = self.COLOR_ACTIVE if self.active else self.COLOR_INACTIVE
+        if event.type == pygame.KEYDOWN:
+            if self.active:
+                if event.key == pygame.K_RETURN:
+                    if self.callback:
+                        self.callback(self.text)
+                elif event.key == pygame.K_BACKSPACE:
+                    self.text = self.text[:-1]
+                else:
+                    self.text += event.unicode
+                # Re-render the text.
+                self.txt_surface = self.FONT.render(self.text, True, self.color)
+
+    def update(self):
+        # Resize the box if the text is too long.
+        width = max(200, self.txt_surface.get_width()+10)
+        self.rect.w = width
+
+    def draw(self, screen):
+        # Blit the text.
+        screen.blit(self.txt_surface, (self.rect.x+5, self.rect.y+5))
+        # Blit the rect.
+        pygame.draw.rect(screen, self.color, self.rect, 2)
+        screen.blit(self.txt_surface, (self.rect.x+5, self.rect.y+5))
+        screen.blit(self.txt_surface_title, (self.rect.x+5, self.rect.y-25))
+
+if __name__ == "__main__":
+    uni = Univers(name='Test InputBox')
+    input_box1 = InputBox(100, 100, 140, 32, title='Entrez un nombre :')
+    input_box2 = InputBox(100, 300, 140, 32, title='Entrez un texte :')
+    input_boxes = [input_box1, input_box2]
     
-    m1 = MoteurCC(visc=1e-3, name='Moteur BO', position=v(50, 50, 0))
-    m2 = MoteurCC(visc=1e-3, name='Moteur BF', position=v(50, 30, 0))
-    m2_PID = ControlPID_vitesse(m2, K_P=50.0, K_I=10, K_D=0.1)
-
-    u.addObjets(m1, m2)
-    u.addObjets(m2_PID)
-
-    def interaction_clavier(self, events, keys):
-        moteur = self.acteurs[0]
-
-        if keys[pygame.K_UP]:
-            moteur.setVoltage(12.0)
-        elif keys[pygame.K_DOWN]:
-            moteur.setVoltage(-12.0)
-        elif keys[pygame.K_SPACE]:
-            moteur.setVoltage(0)
-
-    u.gameInteraction = MethodType(interaction_clavier, u)
-
-    m2_PID.setTarget(10)
-    u.simulateRealTime()
-    
-    m2_PID.plot([m1])
-    plt.show()
-
-
-
-
-
-
-
+    uni.addObjets(*input_boxes)
+    uni.simulateRealTime()
