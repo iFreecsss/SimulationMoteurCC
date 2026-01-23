@@ -247,3 +247,35 @@ if __name__ == "__main__":
     
     uni.addObjets(*input_boxes)
     uni.simulateRealTime()
+
+class Button:
+    def __init__(self, x, y, w, h, text='', title='', callback=None):
+        pygame.font.init()
+        self.COLOR_INACTIVE = pygame.Color('lightskyblue3')
+        self.COLOR_ACTIVE = pygame.Color('dodgerblue2')
+        self.FONT = pygame.font.Font(None, 32)
+
+        self.rect = pygame.Rect(x, y, w, h)
+        self.color = self.COLOR_INACTIVE
+        self.text = text
+        self.title = title
+        self.txt_surface_title = self.FONT.render(title, True, self.color)
+        self.txt_surface = self.FONT.render(text, True, self.color)
+        self.active = False
+        self.callback = callback
+        
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(event.pos):
+                if self.callback:
+                    self.callback()
+
+    def update(self):
+        # pour compatibilité avec Univers
+        pass
+
+    def draw(self, screen):
+        screen.blit(self.txt_surface, (self.rect.x+5, self.rect.y+5))
+        pygame.draw.rect(screen, self.color, self.rect, 2)
+        screen.blit(self.txt_surface, (self.rect.x+5, self.rect.y+5))
+        screen.blit(self.txt_surface_title, (self.rect.x+5, self.rect.y-25))
