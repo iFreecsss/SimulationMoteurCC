@@ -1,4 +1,4 @@
-from math import cos, pi, sin, atan2
+from math import cos, pi, sin, atan2, radians, sqrt
 import string
 import matplotlib.pyplot as plt
 
@@ -427,7 +427,7 @@ if __name__ == "__main__":
         pilote.addController('traj', pid_direction)
         pilote.addController('speed', pid_propulsion)
         
-        uni.target = v(8, 8, 0)
+        uni.target = v(5, 5, 0)
         visu_target = Particule(position=uni.target, color=(255, 0, 0), masse=0)
         pilote.setTarget(uni.target)
 
@@ -769,18 +769,13 @@ if __name__ == "__main__":
         uni = Univers(name="Bras 1R Asservi", game=True, dimensions=(10, 10)) 
         bras = Bras1R(longueur=2.0, masse=1.0, angle_init=-math.pi/2)
         
-        pid = ControlPID_position(
-            moteur=bras.moteur,
-            K_P=5000.0, K_I=100.0, K_D=1000.0,
-            getPosition=lambda: bras.barre.theta,
-            getSpeed=lambda: bras.barre.omega
-        )
+        pid = ControlPID_position(moteur=bras.moteur,K_P=5000.0, K_I=100.0, K_D=1000.0,getPosition=lambda: bras.barre.theta,getSpeed=lambda: bras.barre.omega)
         pid.modulo = True
         
         def nouvel_angle(text):
             try:
                 angle_deg = float(text)
-                angle_rad = math.radians(angle_deg)
+                angle_rad = radians(angle_deg)
                 pid.setTarget(angle_rad)
             except ValueError:
                 pass
@@ -840,7 +835,113 @@ class Bras2R:
         
         self.pivot2.pos_univers = pos_coude_actuelle
         self.pivot2.simule(step)
+    
+    def mgi(self, position):
+        from math import atan2, sqrt, pi
 
+        if not self.zone_atteignable(position):
+            return [(0,0)]
+
+        px, py, pz = position.x-self.pivot1.pos_univers.x, position.y-self.pivot1.pos_univers.y, position.z-self.pivot1.pos_univers.z
+        L1, L2 = self.l1, self.l2
+        
+        C2 = (px**2 + py**2 - L1**2 - L2**2) / (2 * L1 * L2)
+        S2 = sqrt(1 - C2**2)
+        q2s = [atan2(S2, C2), atan2(-S2, C2)]
+
+        solutions = []
+
+        for q2 in q2s:
+            k1 = L1 + L2 * cos(q2)
+            k2 = L2 * sin(q2)
+            q1 = atan2(py, px) - atan2(k2, k1)
+            solutions.append((q1, q2))
+
+        return solutions
+
+    def mat_transfo(self, qs):
+        
+        c1 = cos(qs[0])
+        s1 = sin(qs[0])
+        c2 = cos(qs[1])
+        s2 = sin(qs[1])
+
+        T= [[c1*c2,s1, c1*s2,s1*self.l2],
+        [s1*c2,-c1,s1*s2,-c1*self.l2],
+        [-s2,0,-c2,self.l1],
+        [0,0,0,1]]
+        
+        return T
+
+    def mgd(self, q):
+        return self.mat_transfo(q)[:3, 3]
+    
+    def jacobienne(self, q1, q2):
+        
+        L1, L2 = self.l1, self.l2
+        
+        s1 = sin(q1)
+        c1 = cos(q1)
+        s12 = sin(q1 + q2)
+        c12 = cos(q1 + q2)
+        
+        # Dérivées partielles de x par rapport à q1 et q2
+        dx_dq1 = -L1 * s1 - L2 * s12
+        dx_dq2 = -L2 * s12
+        
+        # Dérivées partielles de y par rapport à q1 et q2
+        dy_dq1 = L1 * c1 + L2 * c12
+        dy_dq2 = L2 * c12
+        
+        return [[dx_dq1, dx_dq2], [dy_dq1, dy_dq2]]
+    
+    def zone_atteignable(self, position_cible):
+        px, py = position_cible.x - self.pivot1.pos_univers.x, position_cible.y - self.pivot1.pos_univers.y
+        distance = sqrt(px**2 + py**2)
+        if distance > (self.l1 + self.l2) or distance < abs(self.l1 - self.l2):
+            return False
+        return True
+
+    def mci(self, position_cible, q_init=None, tol=1e-5, max_iter=50):
+        
+        if self.zone_atteignable(position_cible) == False:
+            return [(0,0)]
+        
+        if q_init is None:
+            q_init = (self.barre1.theta, self.barre2.theta - self.barre1.theta)
+
+        target = np.array([
+            position_cible.x - self.pivot1.pos_univers.x,
+            position_cible.y - self.pivot1.pos_univers.y
+        ])
+        
+        q = np.array(q_init)
+        
+        L1, L2 = self.l1, self.l2
+
+        for i in range(max_iter):
+            q1, q2 = q[0], q[1]
+
+            c1, s1 = cos(q1), sin(q1)
+            c12, s12 = cos(q1 + q2), sin(q1 + q2)
+            
+            current_pos = np.array([
+                L1 * c1 + L2 * c12,
+                L1 * s1 + L2 * s12
+            ])
+            
+            error = target - current_pos
+            if np.linalg.norm(error) < tol:
+                return [tuple(q.tolist())]
+            
+            J = np.array(self.jacobienne(q1, q2))
+            
+            dq = np.linalg.pinv(J) @ error
+            
+            q = q + dq
+            
+        return [tuple(q.tolist())]
+        
     def gameDraw(self, screen, scale):
         self.barre1.gameDraw(screen, scale)
         self.barre2.gameDraw(screen, scale)
@@ -848,10 +949,10 @@ class Bras2R:
         self.pivot2.gameDraw(screen, scale)
 
 if __name__ == "__main__":
+
     def bras2R():
         from multiverse import Univers, InputBox
         from control_pid import ControlPID_position
-        import math
 
         uni = Univers(name="Bras 2R Interactif", game=True, dimensions=(10, 10))
         robot = Bras2R(angle1=0, angle2=0)
@@ -864,16 +965,14 @@ if __name__ == "__main__":
 
         def angle_1(text):
             try:
-                val = math.radians(float(text))
+                val = radians(float(text))
                 pid1.setTarget(val)
-                print(f"Consigne Bras 1 : {val} rad")
             except: pass
 
         def angle_2(text):
             try:
-                val = math.radians(float(text))
+                val = radians(float(text))
                 pid2.setTarget(val)
-                print(f"Consigne Bras 2 (relatif) : {val} rad")
             except: pass
 
         box1 = InputBox(20, 50, 100, 32, text='0', title='Angle 1 (en °) :', callback=angle_1)
@@ -882,4 +981,98 @@ if __name__ == "__main__":
         uni.addObjets(robot, pid1, pid2, box1, box2)
         uni.simulateRealTime()
 
-    bras2R()
+    #bras2R()
+
+if __name__ == "__main__":
+
+    def bras2R_mgi():
+        
+        from multiverse import Univers, v, Particule, Button
+        from control_pid import ControlPID_position
+
+        uni = Univers(name="Bras 2R Interactif", game=True, dimensions=(10, 10))
+        robot = Bras2R(angle1=0, angle2=0)
+
+        pid1 = ControlPID_position(moteur=robot.moteur1, K_P=3000, K_I=20, K_D=800,getPosition=lambda: robot.barre1.theta,getSpeed=lambda: robot.barre1.omega)
+        pid2 = ControlPID_position(moteur=robot.moteur2, K_P=3000, K_I=20, K_D=800,getPosition=lambda: robot.barre2.theta - robot.barre1.theta,getSpeed=lambda: robot.barre2.omega - robot.barre1.omega)
+
+        uni.target = v(5, 5, 0)
+        visu_target = Particule(position=uni.target, color=(255, 0, 0), masse=0)
+
+        # ajout d'un bouton pour afficher les solutions
+        numero_sol = [0] 
+
+        def action_bouton():
+            numero_sol[0] += 1
+            solutions = robot.mgi(uni.target)
+            if solutions:
+                idx = numero_sol[0] % len(solutions)
+                pid1.setTarget(solutions[idx][0])
+                pid2.setTarget(solutions[idx][1])
+
+        button = Button(10, 80, 200, 32, text='Switch Solution', callback=action_bouton)
+        uni.addObjets(robot, pid1, pid2, visu_target, button)
+
+        def interaction(self, events, keys):
+            # Changement de cible à la souris
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if button.rect.collidepoint(event.pos):
+                        continue
+                    mx, my = pygame.mouse.get_pos()
+                    px = mx / self.scale
+                    py = (self.gameDimensions[1] - my) / self.scale
+                    uni.target = v(px, py, 0)
+                    visu_target.position[-1] = uni.target
+
+                    solutions = robot.mgi(uni.target)
+                    idx = numero_sol[0] % len(solutions)
+
+                    pid1.setTarget(solutions[idx][0])
+                    pid2.setTarget(solutions[idx][1])
+
+        uni.gameInteraction = MethodType(interaction, uni)
+        uni.simulateRealTime()
+
+    #bras2R_mgi()
+
+if __name__ == "__main__":
+    def bras2R_mci():
+    
+        uni = Univers(name="Bras 2R mci", game=True, dimensions=(10, 10))
+        
+        robot = Bras2R(angle1=0.1, angle2=0.1) # Pas 0,0 pour éviter la singularité de départ
+        
+        pid1 = ControlPID_position(moteur=robot.moteur1, K_P=3000, K_I=20, K_D=800,getPosition=lambda: robot.barre1.theta,getSpeed=lambda: robot.barre1.omega)
+        pid2 = ControlPID_position(moteur=robot.moteur2, K_P=3000, K_I=20, K_D=800,getPosition=lambda: robot.barre2.theta - robot.barre1.theta,getSpeed=lambda: robot.barre2.omega - robot.barre1.omega)
+        pid1.modulo = True
+        pid2.modulo = True
+
+        uni.target = v(5, 5, 0)
+        visu_target = Particule(position=uni.target, color=(0, 255, 0), masse=0)
+
+        uni.addObjets(robot, pid1, pid2, visu_target)
+
+        def interaction(self, events, keys):
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mx, my = pygame.mouse.get_pos()
+                    px = mx / self.scale
+                    py = (self.gameDimensions[1] - my) / self.scale
+                    uni.target = v(px, py, 0)
+                    visu_target.position[-1] = uni.target
+                    
+                    q1_actuel = robot.barre1.theta
+                    q2_actuel = robot.barre2.theta - robot.barre1.theta
+                    
+                    solutions = robot.mci(uni.target, q_init=(q1_actuel, q2_actuel))
+                    
+                    if solutions:
+                        q1_consigne, q2_consigne = solutions[0]
+                        pid1.setTarget(q1_consigne)
+                        pid2.setTarget(q2_consigne)
+
+        uni.gameInteraction = MethodType(interaction, uni)
+        uni.simulateRealTime()
+
+    bras2R_mci()
