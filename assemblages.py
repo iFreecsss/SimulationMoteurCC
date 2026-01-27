@@ -133,7 +133,7 @@ class Pendule:
         self.masse.gameDraw(screen, scale)
         self.fil.gameDraw(screen, scale)
     
-    def simule(self, step_dt):
+    def simule(self, step):
         
         self.fil.setForce(self.masse)
         
@@ -142,10 +142,12 @@ class Pendule:
         theta_actuel = atan2(delta.x, -delta.y)
         
         self.angle.append(theta_actuel)
+
+        self.masse.simule(step)
         
         speed = self.masse.getSpeed()
         self.vitesse.append(speed)
-        self.temps.append(self.temps[-1] + step_dt)
+        self.temps.append(self.temps[-1] + step)
 
     def applyEffort(self, force_vector):
         self.masse.applyForce(force_vector)
@@ -173,7 +175,7 @@ if __name__ == "__main__":
         
         p.plot()
 
-    # run_pendule()
+    #run_pendule()
 
 class PenduleBarre2D:
     def __init__(self, largeur_barre=0.1, longueur_barre=1.0, angle_init=0.0, centre_barre=v(), pos_piv_barre=-1, pos_piv_uni=v(5,5,0)):
@@ -210,7 +212,7 @@ if __name__ == "__main__":
         uni.addObjets(pb, g)
         uni.simulateRealTime()
 
-    # run_pendule_barre()
+    #run_pendule_barre()
 
     def run_both():
         import numpy as np
@@ -218,14 +220,14 @@ if __name__ == "__main__":
         L0 = 1.0
 
         uni = Univers(name="Pendule Simple", game=True, dimensions=(10, 10))
-        p = Pendule(attache_pos=v(1.5, 5, 0), longueur=1.5*L0, angle_init=np.pi/4)
+        p = Pendule(attache_pos=v(1.5, 5, 0), longueur=L0, angle_init=np.pi/4)
         gravite = Gravity(v(0, -9.81, 0))
-        pb = PenduleBarre2D(pos_piv_uni=v(3.5, 5, 0), longueur_barre=L0,angle_init=-np.pi/4)
+        pb = PenduleBarre2D(pos_piv_uni=v(3.5, 5, 0), longueur_barre=1.5*L0, largeur_barre=.1, angle_init=-np.pi/4)
 
-        uni.addObjets(gravite, p.ancre, p.masse, p, pb)
+        uni.addObjets(gravite, p, pb)
         uni.simulateRealTime()
 
-    # run_both()
+    #run_both()
 
 class TurtleBot:
     def __init__(self, P0=v(0,0,0), R0=0, name='TurtleBot', color=(0, 255, 0)):
@@ -785,7 +787,7 @@ if __name__ == "__main__":
         
         uni.simulateRealTime()
         
-    bras1R_BF()
+    #bras1R_BF()
 
 class Bras2R:
     def __init__(self, l1=1.0, l2=1.0, m1=1.0, m2=1.0, angle1=0.0, angle2=0.0):
@@ -1075,4 +1077,4 @@ if __name__ == "__main__":
         uni.gameInteraction = MethodType(interaction, uni)
         uni.simulateRealTime()
 
-    bras2R_mci()
+    #bras2R_mci()
