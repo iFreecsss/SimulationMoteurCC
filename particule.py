@@ -23,6 +23,7 @@ class Particule:
         self.forces_ext = []
 
         self.fixed = fixed
+        self.is_particle = True
 
     def applyForce(self, *args):
         for f in args:
@@ -97,6 +98,8 @@ class Barre2D:
         self.rotation = [self.theta]
         self.ts = [0]
 
+        self.is_barre2D = True
+
     def getPosition(self):
         return self.G
     
@@ -124,7 +127,6 @@ class Barre2D:
 
         self.actions_meca.P = self.G
         self.actions_meca = self.actions_meca + T_effort
-
 
     def simule(self, step):
         if self.fixed:
