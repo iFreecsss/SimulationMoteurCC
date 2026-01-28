@@ -12,6 +12,7 @@ from forces_liaisons import *
 from assemblages import *
 
 class Univers:
+
     def __init__(self, name='ici', t0=0, step=0.001, dimensions=(100,100), game=False, gameDimensions=(1024,780), fps=60):
         self.name = name
         self.time = [t0]
@@ -49,8 +50,7 @@ class Univers:
 
             # est ce que c'est une contrainte cinématique ? (bon ici on accepte que les pivots)
             # peut etre juste ajouter un flag is_constraint a pivot ?
-            is_constraint = hasattr(o, 'barre') and hasattr(o, 'pos_univers') 
-            if is_constraint: 
+            if hasattr(o, 'getParentPosition'):
                 self.contraintes.append(o)
             
             # elif ici car les constraints ont aussi un simule 
@@ -87,7 +87,6 @@ class Univers:
             acteur.simule(self.step)
 
         self.time.append(self.time[-1] + self.step)
-
 
     def simulateFor(self, duration):
         while duration > 0:
@@ -249,6 +248,7 @@ if __name__ == "__main__":
     uni.simulateRealTime()
 
 class Button:
+
     def __init__(self, x, y, w, h, text='', title='', callback=None):
         pygame.font.init()
         self.COLOR_INACTIVE = pygame.Color('lightskyblue3')
