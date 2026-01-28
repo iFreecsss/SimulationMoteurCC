@@ -19,6 +19,7 @@ class Force:
             particule.applyForce(self.force)
 
 class ForceSelect(Force):
+
     def __init__(self,force, target_particule, name='force_select'):
         super().__init__(force, name)
         self.target_particule = target_particule
@@ -56,6 +57,7 @@ class Viscosity:
         pygame.draw.circle(screen, 'red', (X, Y), R, 1)
 
 class Gravity:
+
     def __init__(self, g, name='gravity', active=True):
         self.name = name
         self.g = g
@@ -69,6 +71,7 @@ class Gravity:
                 objet.applyEffort(self.g)
 
 class SpringDamper:
+
     def __init__(self, L0, k, c, P0, P2, name='spring damper', active=True):
         self.L0 = L0
         self.k = k
@@ -115,6 +118,7 @@ class SpringDamper:
             pygame.draw.line(screen, (255, 0, 0), start, end, 2)
 
 class Fil(SpringDamper):
+
     def __init__(self, P0, P2, name='fil', active=True):
         L0 = (P2.getPosition() - P0.getPosition()).mod()
         self.k = 1e4
@@ -122,59 +126,82 @@ class Fil(SpringDamper):
         super().__init__(L0=L0, k=self.k, c=self.c, P0=P0, P2=P2, name=name, active=active)
 
 class Pivot:
-    def __init__(self, barre, position_pivot_barre=0, position_pivot_univers=v()):
 
-        self.barre = barre
-        # c'est le point de la liaison sur la barre
-        self.pos_barre = position_pivot_barre
-        self.pos_univers = position_pivot_univers
+    def __init__(self, objet, support=None, pivot_obj=0, pivot_sup=0):
+        self.child = objet
+        self.parent = support if support is not None else v(0,0,0)
+        
+        # Positions relatives (-1 à 1 pour les barres)
+        self.pos_rel_child = pivot_obj
+        self.pos_rel_parent = pivot_sup
 
-        # distance entre G et le pivot
-        self.dist_G_pivot = (self.barre.long / 2.0) * abs(self.pos_barre)
+    def getPosition(self):
+        return self.getParentPosition()
 
-        # moment d'inertie avec Huygens J_pivot = J_barre + m * d^2
-        self.J_pivot = self.barre.J + self.barre.mass * (self.dist_G_pivot**2)
+    def getParentPosition(self):
+        # si le parent est un vecteur on renvoie directement sa position
+        if isinstance(self.parent, v):
+            return self.parent
+        
+        # si c'est une particule on renvoie sa position
+        elif hasattr(self.parent, 'is_particle'):
+            return self.parent.getPosition()
+            
+        # si c'est une barre on calcule la position du pivot
+        elif hasattr(self.parent, 'is_barre2D'):
+            # P = G + (L/2 * pos_rel) * u
+            u = v(cos(self.parent.theta), sin(self.parent.theta), 0)
+            dist = (self.parent.long / 2.0) * self.pos_rel_parent
+            return self.parent.G + (u * dist)
+            
+        return v(0,0,0)
 
     def simule(self, step):
-        
-        # récupération du torseur des forces de la barre actuellement exprimé au point G de la barre
-        T_action = self.barre.actions_meca
-        
-        # transport du torseur au point de pivot avec BABAR
-        T_action.changePoint(self.pos_univers)
-        
-        alpha = T_action.M.z / self.J_pivot
-        
-        self.barre.omega += alpha * step
-        self.barre.theta += self.barre.omega * step
-        
-        # vecteur unitaire de la barre
-        u = v(cos(self.barre.theta), sin(self.barre.theta), 0)
-        
-        # Si le pivot est à droite, G est à gauche
-        # Si le pivot est à gauche, G est à droite
-        if self.pos_barre < 0:
-            vector_P_to_G = u * self.dist_G_pivot
-        else:
-            vector_P_to_G = u * -self.dist_G_pivot
 
-        self.barre.G = self.pos_univers + vector_P_to_G
-        
-        # vide le torseur de la barre
-        self.barre.actions_meca = Torseur(P=self.barre.G, R=v(0,0,0), M=v(0,0,0))
-        
-        self.barre.pos.append(self.barre.G)
-        self.barre.rotation.append(self.barre.theta)
-    
+        pos_univers = self.getParentPosition()
+
+        if self.child.is_barre2D:
+            dist_G = (self.child.long / 2.0) * abs(self.pos_rel_child)
+            J_pivot = self.child.J + self.child.mass * (dist_G**2)
+            # On transporte le torseur des forces au pivot
+            T_action = self.child.actions_meca
+            T_action.changePoint(pos_univers)
+            
+            # PFD en rotation : alpha = M / J
+            alpha = T_action.M.z / J_pivot
+            
+            self.child.omega += alpha * step
+            self.child.theta += self.child.omega * step
+            
+            # Mise à jour de la position du centre de gravité G
+            u = v(cos(self.child.theta), sin(self.child.theta), 0)
+            dist_G = (self.child.long / 2.0) * self.pos_rel_child
+            
+            # G = P - dist * u (Attention au signe selon le côté du pivot)
+            self.child.G = pos_univers - (u * dist_G)
+            
+            # Reset des forces et historiques
+            self.child.actions_meca = Torseur(P=self.child.G, R=v(0,0,0), M=v(0,0,0))
+            self.child.pos.append(self.child.G)
+            self.child.rotation.append(self.child.theta)
+            
+        elif self.child.is_particle:
+            self.child.position[-1] = pos_univers
+            # On pourrait aussi transmettre la vitesse du parent ici si besoin
+
     def gameDraw(self, screen, scale):
         import pygame
-        px = int(self.pos_univers.x * scale)
-        py = int(self.pos_univers.y * scale)
-        pygame.draw.circle(screen, (0, 0, 0), (px, py), 5)
+        pos = self.getParentPosition()
+        px, py = int(pos.x * scale), int(pos.y * scale)
+        pygame.draw.circle(screen, (0, 0, 0), (px, py), 4)
+        if hasattr((self.child, self.parent), 'gameDraw'):
+            self.child.gameDraw(screen, scale)
+            self.parent.gameDraw(screen, scale)
 
 class PivotMobile(Pivot):
+
     def __init__(self, barre, particule_support, position_pivot_barre=0):
-        super().__init__(barre, position_pivot_barre, particule_support.getPosition())
+        super().__init__(barre, particule_support, position_pivot_barre, 0)
         self.support = particule_support
 
     def simule(self, step):
@@ -182,6 +209,7 @@ class PivotMobile(Pivot):
         super().simule(step)
 
 class Glissiere:
+    
     def __init__(self, origine, direction, targets=[], k=1e6, c=1e2, longueur_visuelle=1000, name='glissiere', active=True):
 
         self.origine = origine
@@ -267,12 +295,10 @@ if __name__ == "__main__":
 
         uni = Univers(name="Test Pendule Barre", game=True, dimensions=(10, 10))
         b = Barre2D(mass=2.0, long=4.0, large=0.2, theta=-pi/4, centre=v(5, 5, 0), nom="Pendule")
-        pivot = Pivot(barre=b, position_pivot_barre=-1, position_pivot_univers=v(5, 5, 0))
+        pivot = Pivot(objet=b, support=v(5, 7, 0), pivot_obj=-1, pivot_sup=0)
         g = Gravity(v(0, -9.81, 0))
 
-        uni.addObjets(b)
-        uni.addObjets(g)
-        uni.addObjets(pivot)
+        uni.addObjets(b, pivot, g)
         
         uni.simulateRealTime()
 
