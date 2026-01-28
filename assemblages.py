@@ -181,7 +181,7 @@ class PenduleBarre2D:
     def __init__(self, largeur_barre=0.1, longueur_barre=1.0, angle_init=0.0, centre_barre=v(), pos_piv_barre=-1, pos_piv_uni=v(5,5,0)):
 
         self.barre = Barre2D(mass=1.0, long=longueur_barre, large=largeur_barre, theta=angle_init, centre=centre_barre)
-        self.pivot = Pivot(barre=self.barre, position_pivot_barre=pos_piv_barre, position_pivot_univers=pos_piv_uni)
+        self.pivot = Pivot(objet=self.barre, support=pos_piv_uni, pivot_obj=pos_piv_barre, pivot_sup=0)
         
     def gameDraw(self, screen, scale):
         self.barre.gameDraw(screen, scale)
@@ -539,7 +539,7 @@ if __name__ == "__main__":
         
         uni.simulateRealTime()
 
-    # run_pendule_class()
+    #run_pendule_class()
 
 if __name__ == "__main__":
     from multiverse import Univers, v
@@ -698,8 +698,8 @@ class Bras1R:
         
         G = v(cos(self.angle_init), sin(self.angle_init), 0) * (self.longueur / 2)
         
-        self.barre = Barre2D(mass=masse, long=longueur, large=0.1, theta=angle_init, centre=G, color=(200, 50, 50))
-        self.pivot = Pivot(barre=self.barre, position_pivot_barre=-1, position_pivot_univers=v(2,2,0))
+        self.barre = Barre2D(mass=masse, long=self.longueur, large=0.1, theta=self.angle_init, centre=G, color='blue', nom="Bras 1R")
+        self.pivot = Pivot(objet=self.barre, support=v(2,2,0), pivot_obj=-1, pivot_sup=0)
         
         self.moteur = MoteurCC(resistance=1.0, couple=2.0, name="Moteur Coude")
         
@@ -744,7 +744,7 @@ if __name__ == "__main__":
             if keys[K_LEFT]:  part_target.getPosition().x -= vitesse_deplacement
             if keys[K_RIGHT]: part_target.getPosition().x += vitesse_deplacement
             
-            direction = part_target.getPosition() - bras.pivot.pos_univers
+            direction = part_target.getPosition() - bras.pivot.getPosition()
             angle_desire = atan2(direction.y, direction.x)
             pid.setTarget(angle_desire)
 
@@ -796,15 +796,15 @@ class Bras2R:
         
         G1 = v(cos(angle1), sin(angle1), 0) * (l1 / 2)
         self.barre1 = Barre2D(mass=m1, long=l1, large=0.1, theta=angle1, centre=G1, color='red', nom="Bras 1")
-        self.pivot1 = Pivot(barre=self.barre1, position_pivot_barre=-1, position_pivot_univers=v(2, 2, 0))
+        self.pivot1 = Pivot(objet=self.barre1, support=v(2, 2, 0), pivot_obj=-1, pivot_sup=0)
         self.moteur1 = MoteurCC(resistance=1.0, couple=5.0, name="Moteur Epaule")
 
-        pos_coude = self.pivot1.pos_univers + v(cos(angle1), sin(angle1), 0) * l1
+        pos_coude = self.pivot1.getPosition() + v(cos(angle1), sin(angle1), 0) * l1
         G2 = pos_coude + v(cos(angle2), sin(angle2), 0) * (l2 / 2)
 
         self.barre2 = Barre2D(mass=m2, long=l2, large=0.1, theta=angle2, centre=G2, color='blue', nom="Bras 2")
         
-        self.pivot2 = Pivot(barre=self.barre2, position_pivot_barre=-1, position_pivot_univers=pos_coude)
+        self.pivot2 = Pivot(objet=self.barre2, support=self.barre1, pivot_obj=-1, pivot_sup=1)
         self.moteur2 = MoteurCC(resistance=1.0, couple=2.0, name="Moteur Coude")
         
         self.g = Gravity(v(0, -9.81, 0))
@@ -833,9 +833,9 @@ class Bras2R:
 
         # position du pivot 2 attaché au bras 1 dépend donc de l'angle actuel du bras 1
         u1 = v(cos(self.barre1.theta), sin(self.barre1.theta), 0)
-        pos_coude_actuelle = self.pivot1.pos_univers + (u1 * self.barre1.long)
+        pos_coude_actuelle = self.pivot1.getPosition() + (u1 * self.barre1.long)
         
-        self.pivot2.pos_univers = pos_coude_actuelle
+        self.pivot2.support = pos_coude_actuelle
         self.pivot2.simule(step)
     
     def mgi(self, position):
@@ -844,7 +844,7 @@ class Bras2R:
         if not self.zone_atteignable(position):
             return [(0,0)]
 
-        px, py, pz = position.x-self.pivot1.pos_univers.x, position.y-self.pivot1.pos_univers.y, position.z-self.pivot1.pos_univers.z
+        px, py, pz = position.x-self.pivot1.getPosition().x, position.y-self.pivot1.getPosition().y, position.z-self.pivot1.getPosition().z
         L1, L2 = self.l1, self.l2
         
         C2 = (px**2 + py**2 - L1**2 - L2**2) / (2 * L1 * L2)
@@ -898,7 +898,7 @@ class Bras2R:
         return [[dx_dq1, dx_dq2], [dy_dq1, dy_dq2]]
     
     def zone_atteignable(self, position_cible):
-        px, py = position_cible.x - self.pivot1.pos_univers.x, position_cible.y - self.pivot1.pos_univers.y
+        px, py = position_cible.x - self.pivot1.getPosition().x, position_cible.y - self.pivot1.getPosition().y
         distance = sqrt(px**2 + py**2)
         if distance > (self.l1 + self.l2) or distance < abs(self.l1 - self.l2):
             return False
@@ -913,8 +913,8 @@ class Bras2R:
             q_init = (self.barre1.theta, self.barre2.theta - self.barre1.theta)
 
         target = np.array([
-            position_cible.x - self.pivot1.pos_univers.x,
-            position_cible.y - self.pivot1.pos_univers.y
+            position_cible.x - self.pivot1.getPosition().x,
+            position_cible.y - self.pivot1.getPosition().y
         ])
         
         q = np.array(q_init)
@@ -983,7 +983,7 @@ if __name__ == "__main__":
         uni.addObjets(robot, pid1, pid2, box1, box2)
         uni.simulateRealTime()
 
-    #bras2R()
+    bras2R()
 
 if __name__ == "__main__":
 
@@ -1036,7 +1036,7 @@ if __name__ == "__main__":
         uni.gameInteraction = MethodType(interaction, uni)
         uni.simulateRealTime()
 
-    #bras2R_mgi()
+    bras2R_mgi()
 
 if __name__ == "__main__":
     def bras2R_mci():
@@ -1077,4 +1077,4 @@ if __name__ == "__main__":
         uni.gameInteraction = MethodType(interaction, uni)
         uni.simulateRealTime()
 
-    #bras2R_mci()
+    bras2R_mci()
